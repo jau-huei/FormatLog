@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Linq.Expressions;
 
 namespace FormatLog
 {
@@ -40,9 +41,55 @@ namespace FormatLog
         private static Task? _workerTask;
 
         /// <summary>
-        /// 上次执行缓存清理操作的时间，用于判断缓存清理的时间间隔和日期变化。
+        /// 通用辅助方法：根据唯一性表达式批量查询或创建实体，确保数据库中存在所有指定实体（如日志格式、参数、调用者信息等）。
+        /// 对每个实体，先根据唯一性表达式在数据库查找，若不存在则插入，最终返回所有已存在或新建的实体（含主键）。
+        /// 适用于副表去重、批量持久化等场景，避免重复数据。
         /// </summary>
-        private static DateTime lastRemoveExpired = DateTime.Now;
+        /// <typeparam name="T">实体类型（如 Format、Argument、CallerInfo 等）</typeparam>
+        /// <param name="db">日志数据库上下文</param>
+        /// <param name="entities">待确保存在的实体列表</param>
+        /// <param name="dbSetSelector">用于获取目标 DbSet 的选择器</param>
+        /// <param name="uniqueExpressionFactory">唯一性表达式工厂，根据实体生成用于数据库查找的表达式</param>
+        /// <returns>数据库中已存在或新建的实体列表（含主键）</returns>
+        private static async Task<List<T>> GetOrCreateEntitiesAsync<T>(LogDbContext db, List<T> entities, Func<LogDbContext, DbSet<T>> dbSetSelector, Func<T, Expression<Func<T, bool>>> uniqueExpressionFactory) where T : class
+        {
+            if (entities.Count == 0)
+                return new List<T>();
+
+            var dbSet = dbSetSelector(db);
+
+            // 查询已存在的实体
+            var existing = new List<T>();
+            foreach (var entity in entities)
+            {
+                var expr = uniqueExpressionFactory(entity);
+                var found = await dbSet.FirstOrDefaultAsync(expr);
+                if (found != null)
+                    existing.Add(found);
+            }
+
+            // 未找到的实体
+            var notFound = entities.Where(e =>
+                !existing.Any(dbEntity => uniqueExpressionFactory(e).Compile().Invoke(dbEntity))
+            ).ToList();
+
+            if (notFound.Count > 0)
+            {
+                await dbSet.AddRangeAsync(notFound);
+                await db.SaveChangesAsync();
+
+                // 新增的也要查出来
+                foreach (var entity in notFound)
+                {
+                    var expr = uniqueExpressionFactory(entity);
+                    var found = await dbSet.FirstOrDefaultAsync(expr);
+                    if (found != null)
+                        existing.Add(found);
+                }
+            }
+
+            return existing;
+        }
 
         /// <summary>
         /// 立即将日志池中剩余的日志批量异步写入指定日期的数据库文件，
@@ -69,15 +116,27 @@ namespace FormatLog
 
                     // 准备副表
                     var formats = logs.Select(l => l.Format!).Where(f => f != null).Distinct().ToList();
-                    formats = await GetOrCreateFormatsAsync(db, formats);
+                    formats = await GetOrCreateEntitiesAsync(
+                        db, formats,
+                        d => d.Formats,
+                        f => (x => x.FormatString == f.FormatString)
+                    );
                     var formatDic = formats.ToDictionary(f => f, f => f);
 
                     var args = logs.SelectMany(l => l.GetNotNullArguments()).Distinct().ToList();
-                    args = await GetOrCreateArgsAsync(db, args);
+                    args = await GetOrCreateEntitiesAsync(
+                        db, args,
+                        d => d.Arguments,
+                        a => (x => x.Value == a.Value)
+                    );
                     var argsDic = args.ToDictionary(a => a, a => a);
 
                     var callers = logs.Select(l => l.CallerInfo!).Where(c => c != null).Distinct().ToList();
-                    callers = await GetOrCreateCallersAsync(db, callers);
+                    callers = await GetOrCreateEntitiesAsync(
+                        db, callers,
+                        d => d.CallerInfos,
+                        c => (x => x.MemberName == c.MemberName && x.SourceFilePath == c.SourceFilePath && x.SourceLineNumber == c.SourceLineNumber)
+                    );
                     var callerDic = callers.ToDictionary(c => c, c => c);
 
                     // 替换对象
@@ -119,127 +178,6 @@ namespace FormatLog
             {
                 await HandleFlushExceptionAsync(date, logs, ex);
             }
-        }
-
-        /// <summary>
-        /// 获取或创建参数信息（Argument），确保数据库中存在所有参数。
-        /// </summary>
-        /// <param name="db">日志数据库上下文。</param>
-        /// <param name="args">参数信息列表。</param>
-        /// <returns>带有数据库主键的参数信息列表。</returns>
-        private static async Task<List<Argument>> GetOrCreateArgsAsync(LogDbContext db, List<Argument> args)
-        {
-            if (args.Count == 0)
-                return new List<Argument>();
-
-            // 提取所有唯一键
-            var argValues = args.Select(a => a.Value).ToList();
-            var existingArgs = await db.Arguments
-                .Where(a => argValues.Contains(a.Value))
-                .ToListAsync();
-
-            // 找出本地未在数据库中的
-            var notFoundArgs = args
-                .Where(a => !existingArgs.Any(ea => ea.Value == a.Value))
-                .ToList();
-
-            if (notFoundArgs.Count > 0)
-            {
-                await db.Arguments.AddRangeAsync(notFoundArgs);
-                await db.SaveChangesAsync();
-            }
-
-            // 再查一遍，确保全部带Id
-            var dbArgs = await db.Arguments
-                .Where(a => argValues.Contains(a.Value))
-                .ToListAsync();
-
-            return dbArgs;
-        }
-
-        /// <summary>
-        /// 获取或创建调用者信息（CallerInfo），确保数据库中存在所有调用者信息。
-        /// </summary>
-        /// <param name="db">日志数据库上下文。</param>
-        /// <param name="callers">调用者信息列表。</param>
-        /// <returns>带有数据库主键的调用者信息列表。</returns>
-        private static async Task<List<CallerInfo>> GetOrCreateCallersAsync(LogDbContext db, List<CallerInfo> callers)
-        {
-            if (callers.Count == 0)
-                return new List<CallerInfo>();
-
-            // 提取所有唯一键
-            var memberNames = callers.Select(c => c.MemberName).ToList();
-            var filePaths = callers.Select(c => c.SourceFilePath).ToList();
-            var lineNumbers = callers.Select(c => c.SourceLineNumber).ToList();
-
-            // 批量查找已存在的
-            var existingCallers = await db.CallerInfos
-                .Where(c =>
-                    memberNames.Contains(c.MemberName) &&
-                    filePaths.Contains(c.SourceFilePath) &&
-                    lineNumbers.Contains(c.SourceLineNumber))
-                .ToListAsync();
-
-            // 找出本地未在数据库中的
-            var notFoundCallers = callers
-                .Where(c => !existingCallers.Any(ec =>
-                    ec.MemberName == c.MemberName &&
-                    ec.SourceFilePath == c.SourceFilePath &&
-                    ec.SourceLineNumber == c.SourceLineNumber))
-                .ToList();
-
-            if (notFoundCallers.Count > 0)
-            {
-                await db.CallerInfos.AddRangeAsync(notFoundCallers);
-                await db.SaveChangesAsync();
-            }
-
-            // 再查一遍，确保全部带Id
-            var dbCallers = await db.CallerInfos
-                .Where(c =>
-                    memberNames.Contains(c.MemberName) &&
-                    filePaths.Contains(c.SourceFilePath) &&
-                    lineNumbers.Contains(c.SourceLineNumber))
-                .ToListAsync();
-
-            return dbCallers;
-        }
-
-        /// <summary>
-        /// 获取或创建格式信息（Format），确保数据库中存在所有格式。
-        /// </summary>
-        /// <param name="db">日志数据库上下文。</param>
-        /// <param name="formats">格式信息列表。</param>
-        /// <returns>带有数据库主键的格式信息列表。</returns>
-        private static async Task<List<Format>> GetOrCreateFormatsAsync(LogDbContext db, List<Format> formats)
-        {
-            if (formats.Count == 0)
-                return new List<Format>();
-
-            // 提取所有唯一键
-            var formatStrings = formats.Select(f => f.FormatString).ToList();
-            var existingFormats = await db.Formats
-                .Where(f => formatStrings.Contains(f.FormatString))
-                .ToListAsync();
-
-            // 找出本地未在数据库中的
-            var notFoundFormats = formats
-                .Where(f => !existingFormats.Any(ef => ef.FormatString == f.FormatString))
-                .ToList();
-
-            if (notFoundFormats.Count > 0)
-            {
-                await db.Formats.AddRangeAsync(notFoundFormats);
-                await db.SaveChangesAsync();
-            }
-
-            // 再查一遍，确保全部带Id
-            var dbFormats = await db.Formats
-                .Where(f => formatStrings.Contains(f.FormatString))
-                .ToListAsync();
-
-            return dbFormats;
         }
 
         /// <summary>
