@@ -77,6 +77,56 @@ namespace Demo
         }
 
         /// <summary>
+        /// 获取写入统计字段（flushInfo相关字段）。
+        /// </summary>
+        private static List<string> GetFlushInfoLines(FlushInfo flushInfo)
+        {
+            return new List<string>
+            {
+                $"最新批次日志写入数量：{flushInfo.LogCount}",
+                $"日志准备时间：{flushInfo.DataPreparationTime:F3} ms",
+                $"日志写入时间：{flushInfo.DataWriteTime:F3} ms",
+                $"总耗时：{flushInfo.TotalTime:F3} ms",
+                $"平均每百条日志耗时：{(flushInfo.LogCount > 0 ? 100 * flushInfo.TotalTime / flushInfo.LogCount : 0):F3} ms",
+                ""
+            };
+        }
+
+        /// <summary>
+        /// 获取查询结果字段（pageResult相关字段）。
+        /// </summary>
+        private static List<string> GetQueryResultLines(PagedResult<Log> pageResult, Stopwatch stopWatch)
+        {
+            var lines = new List<string>
+            {
+                $"查询时间：{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}",
+                $"查询结果：{pageResult.TotalCount} 条日志，当前页 {pageResult.PageIndex}/{pageResult.TotalPages}，每页 {pageResult.PageSize} 条。耗时 {stopWatch.ElapsedMilliseconds:F3} ms"
+            };
+            lines.AddRange(pageResult.Items.Select(log => log.ToString()));
+            return lines;
+        }
+
+        /// <summary>
+        /// 展示所有行到控制台。
+        /// </summary>
+        private static void DisplayLines(List<string> lines, int lastLineCount, int windowWidth, Func<string, int> getDisplayWidth)
+        {
+            var emptyLine = new string(' ', windowWidth);
+            Console.WriteLine(emptyLine);
+            foreach (var line in lines)
+            {
+                var len = emptyLine.Length - getDisplayWidth(line);
+                if (len <= 0)
+                    Console.WriteLine(line);
+                else
+                    Console.WriteLine(line + new string(' ', len));
+            }
+            // 用空行覆盖旧内容
+            for (int i = lines.Count; i < lastLineCount; i++)
+                Console.WriteLine(emptyLine);
+        }
+
+        /// <summary>
         /// 查表循环函数，持续查询日志并刷新显示。
         /// </summary>
         private static async Task QueryAndDisplayLogsLoop()
@@ -91,33 +141,18 @@ namespace Demo
 
             while (true)
             {
-                var emptyLine = new string(' ', Console.WindowWidth);
-
                 var stopWatch = Stopwatch.StartNew();
                 var pageResult = await queryModel.GetPagedLogsAsync();
                 stopWatch.Stop();
 
+                var flushInfo = FLog.FlushInfo;
                 Console.SetCursorPosition(0, 0);
-                var lines = new List<string>
-                {
-                    $"查询时间：{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}",
-                    $"查询结果：{pageResult.TotalCount} 条日志，当前页 {pageResult.PageIndex}/{pageResult.TotalPages}，每页 {pageResult.PageSize} 条。耗时 {stopWatch.ElapsedMilliseconds:F3} ms",
-                };
-                Console.WriteLine(emptyLine);
-                lines.AddRange(pageResult.Items.Select(log => log.ToString()));
 
-                foreach (var line in lines)
-                {
-                    var len = emptyLine.Length - GetDisplayWidth(line);
-                    if (len <= 0)
-                        Console.WriteLine(line);
-                    else
-                        Console.WriteLine(line + new string(' ', len));
-                }
+                var lines = new List<string>();
+                lines.AddRange(GetFlushInfoLines(flushInfo));
+                lines.AddRange(GetQueryResultLines(pageResult, stopWatch));
 
-                // 用空行覆盖旧内容
-                for (int i = lines.Count; i < lastLineCount; i++)
-                    Console.WriteLine(emptyLine);
+                DisplayLines(lines, lastLineCount, Console.WindowWidth, GetDisplayWidth);
 
                 lastLineCount = lines.Count;
                 queryModel.WithPageIndex(5 * (pageResult.TotalPages / 10) + 1);

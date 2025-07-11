@@ -11,6 +11,11 @@ namespace FormatLog
     public static class FLog
     {
         /// <summary>
+        /// 当前日志批量写入（Flush）操作的统计信息，包括日期、数据准备耗时、写入耗时和日志数量。
+        /// </summary>
+        public static FlushInfo FlushInfo { get; private set; } = new FlushInfo();
+
+        /// <summary>
         /// 用于确保初始化线程安全的锁对象。
         /// </summary>
         private static readonly object _initLock = new();
@@ -103,6 +108,7 @@ namespace FormatLog
             var logs = new List<Log>();
             try
             {
+                var totalStopwatch = System.Diagnostics.Stopwatch.StartNew();
                 while (_logQueue.TryDequeue(out var log))
                     logs.Add(log);
 
@@ -115,6 +121,7 @@ namespace FormatLog
                     await db.Database.EnsureCreatedAsync(token);
 
                     // 准备副表
+                    var prepareStopwatch = System.Diagnostics.Stopwatch.StartNew();
                     var formats = logs.Select(l => l.Format!).Where(f => f != null).Distinct().ToList();
                     formats = await GetOrCreateEntitiesAsync(
                         db, formats,
@@ -138,6 +145,7 @@ namespace FormatLog
                         c => (x => x.MemberName == c.MemberName && x.SourceFilePath == c.SourceFilePath && x.SourceLineNumber == c.SourceLineNumber)
                     );
                     var callerDic = callers.ToDictionary(c => c, c => c);
+                    prepareStopwatch.Stop();
 
                     // 替换对象
                     foreach (var log in logs)
@@ -170,8 +178,21 @@ namespace FormatLog
                         log.Arg9Id = log.Arg9?.Id;
                     }
 
+                    var writeStopwatch = System.Diagnostics.Stopwatch.StartNew();
                     await db.Set<Log>().AddRangeAsync(logs, token);
                     await db.SaveChangesAsync(token);
+                    writeStopwatch.Stop();
+
+                    totalStopwatch.Stop();
+
+                    FlushInfo = new FlushInfo
+                    {
+                        Date = DateTime.Now,
+                        DataPreparationTime = prepareStopwatch.Elapsed.TotalMilliseconds,
+                        DataWriteTime = writeStopwatch.Elapsed.TotalMilliseconds,
+                        LogCount = logs.Count,
+                        TotalTime = totalStopwatch.Elapsed.TotalMilliseconds
+                    };
                 }
             }
             catch (Exception ex)
