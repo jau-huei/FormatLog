@@ -6,7 +6,7 @@ namespace FormatLog
     /// 表示日志格式。
     /// </summary>
     [Index(nameof(FormatString))]
-    public class Format : IEntity
+    public class Format : ISqlInsertable
     {
         /// <summary>
         /// 获取或设置格式的唯一标识。

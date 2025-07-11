@@ -7,7 +7,7 @@ namespace FormatLog
     /// 表示日志信息。
     /// </summary>
     [Index(nameof(Level), nameof(CreatedAt), nameof(FormatId), nameof(CallerInfoId), nameof(Arg0Id), nameof(Arg1Id), nameof(Arg2Id), nameof(Arg3Id), nameof(Arg4Id), nameof(Arg5Id), nameof(Arg6Id), nameof(Arg7Id), nameof(Arg8Id), nameof(Arg9Id))]
-    public class Log : IEntity
+    public class Log : ISqlInsertable
     {
         /// <summary>
         /// 获取或设置日志的唯一标识。

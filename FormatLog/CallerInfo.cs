@@ -6,7 +6,7 @@ namespace FormatLog
     /// 表示记录日志时的调用上下文信息，包括成员名称、源文件路径和行号。
     /// </summary>
     [Index(nameof(MemberName), nameof(SourceFilePath), nameof(SourceLineNumber))]
-    public class CallerInfo : IEntity
+    public class CallerInfo : ISqlInsertable
     {
         /// <summary>
         /// 获取或设置成员的唯一标识。

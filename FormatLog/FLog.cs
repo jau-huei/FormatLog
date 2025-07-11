@@ -44,12 +44,12 @@ namespace FormatLog
         /// <summary>
         /// 批量插入实体集合到数据库，并自动提交事务。
         /// 该方法会根据实体类型自动生成批量插入 SQL 语句（多行 VALUES），
-        /// 适用于高效写入 Format、Argument、CallerInfo、Log 等实现了 <see cref="IEntity"/> 的实体。
+        /// 适用于高效写入 Format、Argument、CallerInfo、Log 等实现了 <see cref="ISqlInsertable"/> 的实体。
         /// </summary>
-        /// <typeparam name="T">实体类型，必须实现 <see cref="IEntity"/>。</typeparam>
+        /// <typeparam name="T">实体类型，必须实现 <see cref="ISqlInsertable"/>。</typeparam>
         /// <param name="dbSet">目标数据库表的 DbSet。</param>
         /// <param name="entities">待插入的实体集合。</param>
-        private static async Task AddRangeAndCommitAsync<T>(DbSet<T> dbSet, List<T> entities) where T : class, IEntity
+        private static async Task AddRangeAndCommitAsync<T>(DbSet<T> dbSet, List<T> entities) where T : class, ISqlInsertable
         {
             if (entities == null || entities.Count == 0) return;
 
@@ -188,7 +188,7 @@ namespace FormatLog
         /// <param name="dbSetSelector">用于获取目标 DbSet 的选择器</param>
         /// <param name="uniqueExpressionFactory">唯一性表达式工厂，根据实体生成用于数据库查找的表达式</param>
         /// <returns>数据库中已存在或新建的实体列表（含主键）</returns>
-        private static async Task<List<T>> GetOrCreateEntitiesAsync<T>(LogDbContext db, List<T> entities, Func<LogDbContext, DbSet<T>> dbSetSelector, Func<T, Expression<Func<T, bool>>> uniqueExpressionFactory) where T : class, IEntity
+        private static async Task<List<T>> GetOrCreateEntitiesAsync<T>(LogDbContext db, List<T> entities, Func<LogDbContext, DbSet<T>> dbSetSelector, Func<T, Expression<Func<T, bool>>> uniqueExpressionFactory) where T : class, ISqlInsertable
         {
             if (entities.Count == 0)
                 return new List<T>();

@@ -6,7 +6,7 @@ namespace FormatLog
     /// 表示日志参数。
     /// </summary>
     [Index(nameof(Value))]
-    public class Argument : IEntity
+    public class Argument : ISqlInsertable
     {
         /// <summary>
         /// 获取或设置参数的唯一标识。
