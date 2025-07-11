@@ -52,19 +52,19 @@ namespace FormatLog
         public static async Task AddRangeAndCommitAsync<T>(DbSet<T> dbSet, List<T> entities, string insertSql, Func<T, string> valueSql) where T : class
         {
             if (entities == null || entities.Count == 0) return;
+
             var context = dbSet.GetService<ICurrentDbContext>().Context;
             var conn = context.Database.GetDbConnection();
             await conn.OpenAsync();
+
+            var sb = new System.Text.StringBuilder();
+            sb.Append(insertSql);
+            var valuesSql = entities.AsParallel().Select(e => valueSql(e)).ToList();
+            sb.Append(string.Join(",", valuesSql));
+
             using var tran = conn.BeginTransaction();
             using var cmd = conn.CreateCommand();
             cmd.Transaction = tran;
-            var sb = new System.Text.StringBuilder();
-            sb.Append(insertSql);
-            for (int i = 0; i < entities.Count; i++)
-            {
-                if (i > 0) sb.Append(",");
-                sb.Append(valueSql(entities[i]));
-            }
             cmd.CommandText = sb.ToString();
             await cmd.ExecuteNonQueryAsync();
             tran.Commit();
@@ -164,7 +164,7 @@ namespace FormatLog
                         d => d.Arguments,
                         a => (x => x.Value == a.Value),
                         "INSERT INTO Arguments (Value) VALUES ",
-                        e => $"({(((Argument)(object)e).Value == null ? "NULL" : $"'{((Argument)(object)e).Value.Replace("'", "''")}'")})"
+                        e => $"({(((Argument)(object)e).Value == null ? "NULL" : $"'{((Argument)(object)e).Value!.Replace("'", "''")}'")})"
                     );
                     var argsDic = args.ToDictionary(a => a, a => a);
 
