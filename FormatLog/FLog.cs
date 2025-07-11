@@ -330,13 +330,12 @@ namespace FormatLog
         }
 
         /// <summary>
-        /// 根据查询参数异步分页获取日志。
+        /// 根据游标分页参数异步获取日志。
         /// </summary>
         /// <param name="queryModel">查询参数。</param>
-        /// <returns>分页日志结果。</returns>
-        public static async Task<PagedResult<Log>> GetPagedLogsAsync(this QueryModel queryModel)
+        /// <returns>游标分页日志结果。</returns>
+        public static async Task<KeysetPage<Log>> KeysetPaginationAsync(this QueryModel queryModel)
         {
-            // 选择数据库日期（优先StartTime，否则EndTime，否则今天）
             var date = queryModel.StartTime?.Date ?? queryModel.EndTime?.Date ?? DateTime.Today;
             using var db = new LogDbContext(date.Year, date.Month, date.Day);
 
@@ -353,7 +352,32 @@ namespace FormatLog
                 .Include(l => l.Arg7)
                 .Include(l => l.Arg8)
                 .Include(l => l.Arg9)
+                .AsNoTracking()
                 .AsQueryable();
+
+            // 游标分页逻辑升序或降序
+            if (queryModel.OrderType == OrderType.OrderByTimeAscending)
+            {
+                logs = logs.OrderBy(l => l.CreatedAt).ThenBy(l => l.Id);
+                if (queryModel.LastCreatedAt.HasValue && queryModel.LastId.HasValue)
+                {
+                    logs = logs.Where(l =>
+                        l.CreatedAt > queryModel.LastCreatedAt.Value ||
+                        (l.CreatedAt == queryModel.LastCreatedAt.Value && l.Id > queryModel.LastId.Value)
+                    );
+                }
+            }
+            else
+            {
+                logs = logs.OrderByDescending(l => l.CreatedAt).ThenByDescending(l => l.Id);
+                if (queryModel.LastCreatedAt.HasValue && queryModel.LastId.HasValue)
+                {
+                    logs = logs.Where(l =>
+                        l.CreatedAt < queryModel.LastCreatedAt.Value ||
+                        (l.CreatedAt == queryModel.LastCreatedAt.Value && l.Id < queryModel.LastId.Value)
+                    );
+                }
+            }
 
             // 条件过滤
             if (queryModel.Level.HasValue)
@@ -365,19 +389,19 @@ namespace FormatLog
 
             if (!string.IsNullOrWhiteSpace(queryModel.FormatString))
             {
-                var formatIds = await db.Formats.Where(f => f.FormatString.Contains(queryModel.FormatString)).Select(f => f.Id).ToListAsync();
+                var formatIds = await db.Formats.AsNoTracking().Where(f => f.FormatString.Contains(queryModel.FormatString)).Select(f => f.Id).ToListAsync();
                 logs = logs.Where(l => formatIds.Contains(l.FormatId));
             }
 
             if (!string.IsNullOrWhiteSpace(queryModel.CallerInfo))
             {
-                var callerIds = await db.CallerInfos.Where(c => c.MemberName!.Contains(queryModel.CallerInfo) || c.SourceFilePath!.Contains(queryModel.CallerInfo)).Select(f => f.Id).ToListAsync();
+                var callerIds = await db.CallerInfos.AsNoTracking().Where(c => c.MemberName!.Contains(queryModel.CallerInfo) || c.SourceFilePath!.Contains(queryModel.CallerInfo)).Select(f => f.Id).ToListAsync();
                 logs = logs.Where(l => l.CallerInfoId.HasValue && callerIds.Contains(l.CallerInfoId.Value));
             }
 
             if (!string.IsNullOrWhiteSpace(queryModel.Argument))
             {
-                var argIds = await db.Arguments.Where(arg => arg.Value!.Contains(queryModel.Argument)).Select(arg => arg.Id).ToListAsync();
+                var argIds = await db.Arguments.AsNoTracking().Where(arg => arg.Value!.Contains(queryModel.Argument)).Select(arg => arg.Id).ToListAsync();
                 logs = logs.Where(l =>
                     (l.Arg0Id.HasValue && argIds.Contains(l.Arg0Id.Value)) ||
                     (l.Arg1Id.HasValue && argIds.Contains(l.Arg1Id.Value)) ||
@@ -392,28 +416,23 @@ namespace FormatLog
                 );
             }
 
-            // 排序
-            logs = queryModel.OrderType switch
-            {
-                OrderType.OrderByTimeAscending => logs.OrderBy(l => l.CreatedAt),
-                OrderType.OrderByTimeDescending => logs.OrderByDescending(l => l.CreatedAt),
-                OrderType.OrderByLevelAscending => logs.OrderBy(l => l.Level),
-                OrderType.OrderByLevelDescending => logs.OrderByDescending(l => l.Level),
-                _ => logs.OrderByDescending(l => l.CreatedAt)
-            };
-
-            // 分页
-            int pageIndex = queryModel.PageIndex > 0 ? queryModel.PageIndex : 1;
             int pageSize = queryModel.PageSize > 0 ? queryModel.PageSize : 20;
-            int totalCount = await logs.CountAsync();
-            var items = await logs.Skip((pageIndex - 1) * pageSize).Take(pageSize).ToListAsync();
+            var items = await logs.Take(pageSize).ToListAsync();
 
-            return new PagedResult<Log>
+            long? nextCursorId = null;
+            DateTime? nextCursorCreatedAt = null;
+            if (items.Count > 0)
             {
-                TotalCount = totalCount,
-                PageIndex = pageIndex,
-                PageSize = pageSize,
-                Items = items
+                var last = items.Last();
+                nextCursorId = last.Id;
+                nextCursorCreatedAt = last.CreatedAt;
+            }
+
+            return new KeysetPage<Log>
+            {
+                Items = items,
+                NextCursorId = nextCursorId,
+                NextCursorCreatedAt = nextCursorCreatedAt
             };
         }
 

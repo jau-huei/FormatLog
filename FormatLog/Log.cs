@@ -207,9 +207,9 @@ namespace FormatLog
             var args = GetArgumentsAsObject();
 
             if (CallerInfo == null)
-                return $"[{CreatedAt:yy-MM-dd HH:mm:ss.fff}] [{Level}] {string.Format(Format.FormatString, args)}";
+                return $"[#{Id}][{CreatedAt:yy-MM-dd HH:mm:ss.fff}] [{Level}] {string.Format(Format.FormatString, args)}";
 
-            return $"[{CreatedAt:yy-MM-dd HH:mm:ss.fff}] [{Level}] {string.Format(Format.FormatString, args)} | {CallerInfo}";
+            return $"[#{Id}][{CreatedAt:yy-MM-dd HH:mm:ss.fff}] [{Level}] {string.Format(Format.FormatString, args)} | {CallerInfo}";
         }
 
         /// <summary>

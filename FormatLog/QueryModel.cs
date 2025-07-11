@@ -1,7 +1,7 @@
 ﻿namespace FormatLog
 {
     /// <summary>
-    /// 日志查询参数模型。
+    /// 日志查询参数模型（游标分页专用）。
     /// </summary>
     public class QueryModel
     {
@@ -36,11 +36,6 @@
         public OrderType OrderType { get; set; }
 
         /// <summary>
-        /// 获取或设置当前页索引(从 1 开始)。
-        /// </summary>
-        public int PageIndex { get; set; }
-
-        /// <summary>
         /// 获取或设置每页显示的日志数量。
         /// </summary>
         public int PageSize { get; set; } = 20;
@@ -49,6 +44,16 @@
         /// 获取或设置日志创建时间范围的起始时间。
         /// </summary>
         public DateTime? StartTime { get; set; }
+
+        /// <summary>
+        /// 游标分页：上一页最后一条日志的主键 Id。
+        /// </summary>
+        public long? LastId { get; set; }
+
+        /// <summary>
+        /// 游标分页：上一页最后一条日志的创建时间。
+        /// </summary>
+        public DateTime? LastCreatedAt { get; set; }
 
         /// <summary>
         /// 设置日志排序方式。
@@ -106,13 +111,24 @@
         }
 
         /// <summary>
-        /// 设置当前页索引。
+        /// 设置游标 Id。
         /// </summary>
-        /// <param name="pageIndex">页索引（从 1 开始）。</param>
+        /// <param name="lastId">上一页最后一条日志的主键 Id。</param>
         /// <returns>返回当前查询模型实例。</returns>
-        public QueryModel WithPageIndex(int pageIndex)
+        public QueryModel WithLastId(long? lastId)
         {
-            PageIndex = pageIndex;
+            LastId = lastId;
+            return this;
+        }
+
+        /// <summary>
+        /// 设置游标 CreatedAt。
+        /// </summary>
+        /// <param name="lastCreatedAt">上一页最后一条日志的创建时间。</param>
+        /// <returns>返回当前查询模型实例。</returns>
+        public QueryModel WithLastCreatedAt(DateTime? lastCreatedAt)
+        {
+            LastCreatedAt = lastCreatedAt;
             return this;
         }
     }
