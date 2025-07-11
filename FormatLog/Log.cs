@@ -274,31 +274,6 @@ namespace FormatLog
         }
 
         /// <summary>
-        /// 创建一个仅包含主键信息（Id、FormatId、CallerInfoId、Arg0Id~Arg9Id、Level、CreatedAt）的浅拷贝日志对象，
-        /// 用于去除所有导航属性和参数对象，便于序列化、存储或简化传递。
-        /// </summary>
-        /// <returns>仅包含主键信息和基础字段的新 <see cref="Log"/> 实例。</returns>
-        public Log ToKeyOnly()
-        {
-            return new Log()
-            {
-                Level = Level,
-                FormatId = FormatId,
-                CallerInfoId = CallerInfoId,
-                Arg0Id = Arg0Id,
-                Arg1Id = Arg1Id,
-                Arg2Id = Arg2Id,
-                Arg3Id = Arg3Id,
-                Arg4Id = Arg4Id,
-                Arg5Id = Arg5Id,
-                Arg6Id = Arg6Id,
-                Arg7Id = Arg7Id,
-                Arg8Id = Arg8Id,
-                Arg9Id = Arg9Id,
-            };
-        }
-
-        /// <summary>
         /// 获取插入日志的 SQL 语句。
         /// </summary>
         /// <returns>插入日志的 SQL 语句。</returns>

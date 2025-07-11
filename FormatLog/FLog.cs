@@ -278,23 +278,15 @@ namespace FormatLog
             }
         }
 
+        /// <summary>
+        /// 进程退出时自动触发日志池批量写入操作。
+        /// 当程序关闭时，调用 <see cref="FlushAsync"/> 方法，将当前日志队列中的所有日志异步写入当天的数据库文件，
+        /// 并持久化相关副表数据（格式、参数、调用者信息等），提升日志数据的可靠性和完整性。
+        /// 注意：由于进程退出时异步操作可能未完全执行完毕，建议如需确保日志完整写入，可在退出前主动调用同步等待的 Flush 方法。
+        /// </summary>
         private static void OnProcessExit(object? sender, EventArgs e)
         {
             _ = FlushAsync(DateTime.Today);
-        }
-
-        /// <summary>
-        /// 将日志集合中的每个 <see cref="Log"/> 实例转换为仅包含主键信息和基础字段的新日志对象，
-        /// 去除所有导航属性和参数对象，便于批量写入数据库或序列化传输。
-        /// </summary>
-        /// <param name="logs">要转换的日志集合。</param>
-        /// <returns>仅包含主键信息和基础字段的 <see cref="Log"/> 集合。</returns>
-        private static IEnumerable<Log> ToKeyOnly(this IEnumerable<Log> logs)
-        {
-            foreach (Log log in logs)
-            {
-                yield return log.ToKeyOnly();
-            }
         }
 
         /// <summary>
@@ -327,6 +319,25 @@ namespace FormatLog
                 InitLogBackgroundWorker();
 
             _logQueue.Enqueue(log);
+        }
+
+        /// <summary>
+        /// 初始化日志后台写入线程（线程安全，避免重复初始化）。
+        /// </summary>
+        public static void InitLogBackgroundWorker()
+        {
+            if (_initialized) return;
+
+            lock (_initLock)
+            {
+                if (_initialized) return;
+                Directory.CreateDirectory(LogDbContext.DbDirectory);
+
+                _cts = new CancellationTokenSource();
+                _workerTask = Task.Run(() => WorkerLoop(_cts.Token));
+                AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
+                _initialized = true;
+            }
         }
 
         /// <summary>
@@ -434,25 +445,6 @@ namespace FormatLog
                 NextCursorId = nextCursorId,
                 NextCursorCreatedAt = nextCursorCreatedAt
             };
-        }
-
-        /// <summary>
-        /// 初始化日志后台写入线程（线程安全，避免重复初始化）。
-        /// </summary>
-        public static void InitLogBackgroundWorker()
-        {
-            if (_initialized) return;
-
-            lock (_initLock)
-            {
-                if (_initialized) return;
-                Directory.CreateDirectory(LogDbContext.DbDirectory);
-
-                _cts = new CancellationTokenSource();
-                _workerTask = Task.Run(() => WorkerLoop(_cts.Token));
-                AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
-                _initialized = true;
-            }
         }
 
         /// <summary>
