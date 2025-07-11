@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Linq.Expressions;
@@ -46,6 +47,30 @@ namespace FormatLog
         private static Task? _workerTask;
 
         /// <summary>
+        /// 批量插入实体并自动提交事务（多行 VALUES）。
+        /// </summary>
+        public static async Task AddRangeAndCommitAsync<T>(DbSet<T> dbSet, List<T> entities, string insertSql, Func<T, string> valueSql) where T : class
+        {
+            if (entities == null || entities.Count == 0) return;
+            var context = dbSet.GetService<ICurrentDbContext>().Context;
+            var conn = context.Database.GetDbConnection();
+            await conn.OpenAsync();
+            using var tran = conn.BeginTransaction();
+            using var cmd = conn.CreateCommand();
+            cmd.Transaction = tran;
+            var sb = new System.Text.StringBuilder();
+            sb.Append(insertSql);
+            for (int i = 0; i < entities.Count; i++)
+            {
+                if (i > 0) sb.Append(",");
+                sb.Append(valueSql(entities[i]));
+            }
+            cmd.CommandText = sb.ToString();
+            await cmd.ExecuteNonQueryAsync();
+            tran.Commit();
+        }
+
+        /// <summary>
         /// 通用辅助方法：根据唯一性表达式批量查询或创建实体，确保数据库中存在所有指定实体（如日志格式、参数、调用者信息等）。
         /// 对每个实体，先根据唯一性表达式在数据库查找，若不存在则插入，最终返回所有已存在或新建的实体（含主键）。
         /// 适用于副表去重、批量持久化等场景，避免重复数据。
@@ -55,8 +80,10 @@ namespace FormatLog
         /// <param name="entities">待确保存在的实体列表</param>
         /// <param name="dbSetSelector">用于获取目标 DbSet 的选择器</param>
         /// <param name="uniqueExpressionFactory">唯一性表达式工厂，根据实体生成用于数据库查找的表达式</param>
+        /// <param name="insertSql">插入语句的 SQL 模板</param>
+        /// <param name="valueSql">生成 VALUES 部分的 SQL 的委托</param>
         /// <returns>数据库中已存在或新建的实体列表（含主键）</returns>
-        private static async Task<List<T>> GetOrCreateEntitiesAsync<T>(LogDbContext db, List<T> entities, Func<LogDbContext, DbSet<T>> dbSetSelector, Func<T, Expression<Func<T, bool>>> uniqueExpressionFactory) where T : class
+        private static async Task<List<T>> GetOrCreateEntitiesAsync<T>(LogDbContext db, List<T> entities, Func<LogDbContext, DbSet<T>> dbSetSelector, Func<T, Expression<Func<T, bool>>> uniqueExpressionFactory, string insertSql, Func<T, string> valueSql) where T : class
         {
             if (entities.Count == 0)
                 return new List<T>();
@@ -80,8 +107,7 @@ namespace FormatLog
 
             if (notFound.Count > 0)
             {
-                await dbSet.AddRangeAsync(notFound);
-                await db.SaveChangesAsync();
+                await AddRangeAndCommitAsync(dbSet, notFound, insertSql, valueSql);
 
                 // 新增的也要查出来
                 foreach (var entity in notFound)
@@ -126,7 +152,9 @@ namespace FormatLog
                     formats = await GetOrCreateEntitiesAsync(
                         db, formats,
                         d => d.Formats,
-                        f => (x => x.FormatString == f.FormatString)
+                        f => (x => x.FormatString == f.FormatString),
+                        "INSERT INTO Formats (FormatString) VALUES ",
+                        e => $"('{((Format)(object)e).FormatString.Replace("'", "''")}')"
                     );
                     var formatDic = formats.ToDictionary(f => f, f => f);
 
@@ -134,7 +162,9 @@ namespace FormatLog
                     args = await GetOrCreateEntitiesAsync(
                         db, args,
                         d => d.Arguments,
-                        a => (x => x.Value == a.Value)
+                        a => (x => x.Value == a.Value),
+                        "INSERT INTO Arguments (Value) VALUES ",
+                        e => $"({(((Argument)(object)e).Value == null ? "NULL" : $"'{((Argument)(object)e).Value.Replace("'", "''")}'")})"
                     );
                     var argsDic = args.ToDictionary(a => a, a => a);
 
@@ -142,7 +172,16 @@ namespace FormatLog
                     callers = await GetOrCreateEntitiesAsync(
                         db, callers,
                         d => d.CallerInfos,
-                        c => (x => x.MemberName == c.MemberName && x.SourceFilePath == c.SourceFilePath && x.SourceLineNumber == c.SourceLineNumber)
+                        c => (x => x.MemberName == c.MemberName && x.SourceFilePath == c.SourceFilePath && x.SourceLineNumber == c.SourceLineNumber),
+                        "INSERT INTO CallerInfos (MemberName, SourceFilePath, SourceLineNumber) VALUES ",
+                        e =>
+                        {
+                            var ci = (CallerInfo)(object)e;
+                            var member = ci.MemberName == null ? "NULL" : $"'{ci.MemberName.Replace("'", "''")}'";
+                            var file = ci.SourceFilePath == null ? "NULL" : $"'{ci.SourceFilePath.Replace("'", "''")}'";
+                            var line = ci.SourceLineNumber.HasValue ? ci.SourceLineNumber.Value.ToString() : "NULL";
+                            return $"({member}, {file}, {line})";
+                        }
                     );
                     var callerDic = callers.ToDictionary(c => c, c => c);
                     prepareStopwatch.Stop();
@@ -179,8 +218,16 @@ namespace FormatLog
                     }
 
                     var writeStopwatch = System.Diagnostics.Stopwatch.StartNew();
-                    await db.Set<Log>().AddRangeAsync(logs, token);
-                    await db.SaveChangesAsync(token);
+                    await AddRangeAndCommitAsync(
+                        db.Set<Log>(),
+                        logs,
+                        "INSERT INTO Logs (Level, FormatId, CallerInfoId, Arg0Id, Arg1Id, Arg2Id, Arg3Id, Arg4Id, Arg5Id, Arg6Id, Arg7Id, Arg8Id, Arg9Id, CreatedAt) VALUES ",
+                        log =>
+                        {
+                            string val(long? v) => v.HasValue ? v.Value.ToString() : "NULL";
+                            return $"({(int)log.Level},{log.FormatId},{val(log.CallerInfoId)},{val(log.Arg0Id)},{val(log.Arg1Id)},{val(log.Arg2Id)},{val(log.Arg3Id)},{val(log.Arg4Id)},{val(log.Arg5Id)},{val(log.Arg6Id)},{val(log.Arg7Id)},{val(log.Arg8Id)},{val(log.Arg9Id)},'{log.CreatedAt:yyyy-MM-dd HH:mm:ss.fffffff}')";
+                        }
+                    );
                     writeStopwatch.Stop();
 
                     totalStopwatch.Stop();
