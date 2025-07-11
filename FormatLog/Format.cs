@@ -6,7 +6,7 @@ namespace FormatLog
     /// 表示日志格式。
     /// </summary>
     [Index(nameof(FormatString))]
-    public class Format
+    public class Format : IEntity
     {
         /// <summary>
         /// 获取或设置格式的唯一标识。
@@ -64,5 +64,17 @@ namespace FormatLog
         {
             return FormatString.GetStableHash();
         }
+
+        /// <summary>
+        /// 获取插入 SQL 语句。
+        /// </summary>
+        /// <returns>插入 SQL 语句。</returns>
+        public string GetInsertSql() => "INSERT INTO Formats (FormatString) VALUES ";
+
+        /// <summary>
+        /// 转换为值的 SQL 表示。
+        /// </summary>
+        /// <returns>值的 SQL 表示。</returns>
+        public string ToValueSql() => $"('{FormatString.Replace("'", "''")}')";
     }
 }

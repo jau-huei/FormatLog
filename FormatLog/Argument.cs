@@ -6,7 +6,7 @@ namespace FormatLog
     /// 表示日志参数。
     /// </summary>
     [Index(nameof(Value))]
-    public class Argument
+    public class Argument : IEntity
     {
         /// <summary>
         /// 获取或设置参数的唯一标识。
@@ -60,5 +60,17 @@ namespace FormatLog
         {
             return Value.GetStableHash();
         }
+
+        /// <summary>
+        /// 获取插入参数的 SQL 语句。
+        /// </summary>
+        /// <returns>插入参数的 SQL 语句。</returns>
+        public string GetInsertSql() => "INSERT INTO Arguments (Value) VALUES ";
+
+        /// <summary>
+        /// 将参数值转换为 SQL 表示。
+        /// </summary>
+        /// <returns>参数值的 SQL 表示。</returns>
+        public string ToValueSql() => $"({(Value == null ? "NULL" : $"'{Value.Replace("'", "''")}'")})";
     }
 }

@@ -7,7 +7,7 @@ namespace FormatLog
     /// 表示日志信息。
     /// </summary>
     [Index(nameof(Level), nameof(CreatedAt), nameof(FormatId), nameof(CallerInfoId), nameof(Arg0Id), nameof(Arg1Id), nameof(Arg2Id), nameof(Arg3Id), nameof(Arg4Id), nameof(Arg5Id), nameof(Arg6Id), nameof(Arg7Id), nameof(Arg8Id), nameof(Arg9Id))]
-    public class Log
+    public class Log : IEntity
     {
         /// <summary>
         /// 获取或设置日志的唯一标识。
@@ -296,6 +296,22 @@ namespace FormatLog
                 Arg8Id = Arg8Id,
                 Arg9Id = Arg9Id,
             };
+        }
+
+        /// <summary>
+        /// 获取插入日志的 SQL 语句。
+        /// </summary>
+        /// <returns>插入日志的 SQL 语句。</returns>
+        public string GetInsertSql() => "INSERT INTO Logs (Level, FormatId, CallerInfoId, Arg0Id, Arg1Id, Arg2Id, Arg3Id, Arg4Id, Arg5Id, Arg6Id, Arg7Id, Arg8Id, Arg9Id, CreatedAt) VALUES ";
+
+        /// <summary>
+        /// 将日志转换为 SQL 值字符串。
+        /// </summary>
+        /// <returns>日志的 SQL 值字符串。</returns>
+        public string ToValueSql()
+        {
+            string val(long? v) => v.HasValue ? v.Value.ToString() : "NULL";
+            return $"({(int)Level},{FormatId},{val(CallerInfoId)},{val(Arg0Id)},{val(Arg1Id)},{val(Arg2Id)},{val(Arg3Id)},{val(Arg4Id)},{val(Arg5Id)},{val(Arg6Id)},{val(Arg7Id)},{val(Arg8Id)},{val(Arg9Id)},'{CreatedAt:yyyy-MM-dd HH:mm:ss.fffffff}')";
         }
     }
 }

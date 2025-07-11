@@ -12,11 +12,6 @@ namespace FormatLog
     public static class FLog
     {
         /// <summary>
-        /// 当前日志批量写入（Flush）操作的统计信息，包括日期、数据准备耗时、写入耗时和日志数量。
-        /// </summary>
-        public static FlushInfo FlushInfo { get; private set; } = new FlushInfo();
-
-        /// <summary>
         /// 用于确保初始化线程安全的锁对象。
         /// </summary>
         private static readonly object _initLock = new();
@@ -47,9 +42,14 @@ namespace FormatLog
         private static Task? _workerTask;
 
         /// <summary>
-        /// 批量插入实体并自动提交事务（多行 VALUES）。
+        /// 批量插入实体集合到数据库，并自动提交事务。
+        /// 该方法会根据实体类型自动生成批量插入 SQL 语句（多行 VALUES），
+        /// 适用于高效写入 Format、Argument、CallerInfo、Log 等实现了 <see cref="IEntity"/> 的实体。
         /// </summary>
-        public static async Task AddRangeAndCommitAsync<T>(DbSet<T> dbSet, List<T> entities, string insertSql, Func<T, string> valueSql) where T : class
+        /// <typeparam name="T">实体类型，必须实现 <see cref="IEntity"/>。</typeparam>
+        /// <param name="dbSet">目标数据库表的 DbSet。</param>
+        /// <param name="entities">待插入的实体集合。</param>
+        private static async Task AddRangeAndCommitAsync<T>(DbSet<T> dbSet, List<T> entities) where T : class, IEntity
         {
             if (entities == null || entities.Count == 0) return;
 
@@ -58,8 +58,8 @@ namespace FormatLog
             await conn.OpenAsync();
 
             var sb = new System.Text.StringBuilder();
-            sb.Append(insertSql);
-            var valuesSql = entities.AsParallel().Select(e => valueSql(e)).ToList();
+            sb.Append(entities.First().GetInsertSql());
+            var valuesSql = entities.AsParallel().Select(e => e.ToValueSql()).ToList();
             sb.Append(string.Join(",", valuesSql));
 
             using var tran = conn.BeginTransaction();
@@ -68,58 +68,6 @@ namespace FormatLog
             cmd.CommandText = sb.ToString();
             await cmd.ExecuteNonQueryAsync();
             tran.Commit();
-        }
-
-        /// <summary>
-        /// 通用辅助方法：根据唯一性表达式批量查询或创建实体，确保数据库中存在所有指定实体（如日志格式、参数、调用者信息等）。
-        /// 对每个实体，先根据唯一性表达式在数据库查找，若不存在则插入，最终返回所有已存在或新建的实体（含主键）。
-        /// 适用于副表去重、批量持久化等场景，避免重复数据。
-        /// </summary>
-        /// <typeparam name="T">实体类型（如 Format、Argument、CallerInfo 等）</typeparam>
-        /// <param name="db">日志数据库上下文</param>
-        /// <param name="entities">待确保存在的实体列表</param>
-        /// <param name="dbSetSelector">用于获取目标 DbSet 的选择器</param>
-        /// <param name="uniqueExpressionFactory">唯一性表达式工厂，根据实体生成用于数据库查找的表达式</param>
-        /// <param name="insertSql">插入语句的 SQL 模板</param>
-        /// <param name="valueSql">生成 VALUES 部分的 SQL 的委托</param>
-        /// <returns>数据库中已存在或新建的实体列表（含主键）</returns>
-        private static async Task<List<T>> GetOrCreateEntitiesAsync<T>(LogDbContext db, List<T> entities, Func<LogDbContext, DbSet<T>> dbSetSelector, Func<T, Expression<Func<T, bool>>> uniqueExpressionFactory, string insertSql, Func<T, string> valueSql) where T : class
-        {
-            if (entities.Count == 0)
-                return new List<T>();
-
-            var dbSet = dbSetSelector(db);
-
-            // 查询已存在的实体
-            var existing = new List<T>();
-            foreach (var entity in entities)
-            {
-                var expr = uniqueExpressionFactory(entity);
-                var found = await dbSet.FirstOrDefaultAsync(expr);
-                if (found != null)
-                    existing.Add(found);
-            }
-
-            // 未找到的实体
-            var notFound = entities.Where(e =>
-                !existing.Any(dbEntity => uniqueExpressionFactory(e).Compile().Invoke(dbEntity))
-            ).ToList();
-
-            if (notFound.Count > 0)
-            {
-                await AddRangeAndCommitAsync(dbSet, notFound, insertSql, valueSql);
-
-                // 新增的也要查出来
-                foreach (var entity in notFound)
-                {
-                    var expr = uniqueExpressionFactory(entity);
-                    var found = await dbSet.FirstOrDefaultAsync(expr);
-                    if (found != null)
-                        existing.Add(found);
-                }
-            }
-
-            return existing;
         }
 
         /// <summary>
@@ -152,9 +100,7 @@ namespace FormatLog
                     formats = await GetOrCreateEntitiesAsync(
                         db, formats,
                         d => d.Formats,
-                        f => (x => x.FormatString == f.FormatString),
-                        "INSERT INTO Formats (FormatString) VALUES ",
-                        e => $"('{((Format)(object)e).FormatString.Replace("'", "''")}')"
+                        f => (x => x.FormatString == f.FormatString)
                     );
                     var formatDic = formats.ToDictionary(f => f, f => f);
 
@@ -162,9 +108,7 @@ namespace FormatLog
                     args = await GetOrCreateEntitiesAsync(
                         db, args,
                         d => d.Arguments,
-                        a => (x => x.Value == a.Value),
-                        "INSERT INTO Arguments (Value) VALUES ",
-                        e => $"({(((Argument)(object)e).Value == null ? "NULL" : $"'{((Argument)(object)e).Value!.Replace("'", "''")}'")})"
+                        a => (x => x.Value == a.Value)
                     );
                     var argsDic = args.ToDictionary(a => a, a => a);
 
@@ -172,16 +116,7 @@ namespace FormatLog
                     callers = await GetOrCreateEntitiesAsync(
                         db, callers,
                         d => d.CallerInfos,
-                        c => (x => x.MemberName == c.MemberName && x.SourceFilePath == c.SourceFilePath && x.SourceLineNumber == c.SourceLineNumber),
-                        "INSERT INTO CallerInfos (MemberName, SourceFilePath, SourceLineNumber) VALUES ",
-                        e =>
-                        {
-                            var ci = (CallerInfo)(object)e;
-                            var member = ci.MemberName == null ? "NULL" : $"'{ci.MemberName.Replace("'", "''")}'";
-                            var file = ci.SourceFilePath == null ? "NULL" : $"'{ci.SourceFilePath.Replace("'", "''")}'";
-                            var line = ci.SourceLineNumber.HasValue ? ci.SourceLineNumber.Value.ToString() : "NULL";
-                            return $"({member}, {file}, {line})";
-                        }
+                        c => (x => x.MemberName == c.MemberName && x.SourceFilePath == c.SourceFilePath && x.SourceLineNumber == c.SourceLineNumber)
                     );
                     var callerDic = callers.ToDictionary(c => c, c => c);
                     prepareStopwatch.Stop();
@@ -220,13 +155,7 @@ namespace FormatLog
                     var writeStopwatch = System.Diagnostics.Stopwatch.StartNew();
                     await AddRangeAndCommitAsync(
                         db.Set<Log>(),
-                        logs,
-                        "INSERT INTO Logs (Level, FormatId, CallerInfoId, Arg0Id, Arg1Id, Arg2Id, Arg3Id, Arg4Id, Arg5Id, Arg6Id, Arg7Id, Arg8Id, Arg9Id, CreatedAt) VALUES ",
-                        log =>
-                        {
-                            string val(long? v) => v.HasValue ? v.Value.ToString() : "NULL";
-                            return $"({(int)log.Level},{log.FormatId},{val(log.CallerInfoId)},{val(log.Arg0Id)},{val(log.Arg1Id)},{val(log.Arg2Id)},{val(log.Arg3Id)},{val(log.Arg4Id)},{val(log.Arg5Id)},{val(log.Arg6Id)},{val(log.Arg7Id)},{val(log.Arg8Id)},{val(log.Arg9Id)},'{log.CreatedAt:yyyy-MM-dd HH:mm:ss.fffffff}')";
-                        }
+                        logs
                     );
                     writeStopwatch.Stop();
 
@@ -246,6 +175,56 @@ namespace FormatLog
             {
                 await HandleFlushExceptionAsync(date, logs, ex);
             }
+        }
+
+        /// <summary>
+        /// 通用辅助方法：根据唯一性表达式批量查询或创建实体，确保数据库中存在所有指定实体（如日志格式、参数、调用者信息等）。
+        /// 对每个实体，先根据唯一性表达式在数据库查找，若不存在则插入，最终返回所有已存在或新建的实体（含主键）。
+        /// 适用于副表去重、批量持久化等场景，避免重复数据。
+        /// </summary>
+        /// <typeparam name="T">实体类型（如 Format、Argument、CallerInfo 等）</typeparam>
+        /// <param name="db">日志数据库上下文</param>
+        /// <param name="entities">待确保存在的实体列表</param>
+        /// <param name="dbSetSelector">用于获取目标 DbSet 的选择器</param>
+        /// <param name="uniqueExpressionFactory">唯一性表达式工厂，根据实体生成用于数据库查找的表达式</param>
+        /// <returns>数据库中已存在或新建的实体列表（含主键）</returns>
+        private static async Task<List<T>> GetOrCreateEntitiesAsync<T>(LogDbContext db, List<T> entities, Func<LogDbContext, DbSet<T>> dbSetSelector, Func<T, Expression<Func<T, bool>>> uniqueExpressionFactory) where T : class, IEntity
+        {
+            if (entities.Count == 0)
+                return new List<T>();
+
+            var dbSet = dbSetSelector(db);
+
+            // 查询已存在的实体
+            var existing = new List<T>();
+            foreach (var entity in entities)
+            {
+                var expr = uniqueExpressionFactory(entity);
+                var found = await dbSet.FirstOrDefaultAsync(expr);
+                if (found != null)
+                    existing.Add(found);
+            }
+
+            // 未找到的实体
+            var notFound = entities.Where(e =>
+                !existing.Any(dbEntity => uniqueExpressionFactory(e).Compile().Invoke(dbEntity))
+            ).ToList();
+
+            if (notFound.Count > 0)
+            {
+                await AddRangeAndCommitAsync(dbSet, notFound);
+
+                // 新增的也要查出来
+                foreach (var entity in notFound)
+                {
+                    var expr = uniqueExpressionFactory(entity);
+                    var found = await dbSet.FirstOrDefaultAsync(expr);
+                    if (found != null)
+                        existing.Add(found);
+                }
+            }
+
+            return existing;
         }
 
         /// <summary>
@@ -332,6 +311,11 @@ namespace FormatLog
                 await Task.Delay(_interval, token);
             }
         }
+
+        /// <summary>
+        /// 当前日志批量写入（Flush）操作的统计信息，包括日期、数据准备耗时、写入耗时和日志数量。
+        /// </summary>
+        public static FlushInfo FlushInfo { get; private set; } = new FlushInfo();
 
         /// <summary>
         /// 将日志添加到日志池队列。

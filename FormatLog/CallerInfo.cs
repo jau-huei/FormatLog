@@ -6,7 +6,7 @@ namespace FormatLog
     /// 表示记录日志时的调用上下文信息，包括成员名称、源文件路径和行号。
     /// </summary>
     [Index(nameof(MemberName), nameof(SourceFilePath), nameof(SourceLineNumber))]
-    public class CallerInfo
+    public class CallerInfo : IEntity
     {
         /// <summary>
         /// 获取或设置成员的唯一标识。
@@ -93,6 +93,24 @@ namespace FormatLog
                 hash = hash * 31 + (SourceLineNumber?.GetHashCode() ?? 0);
                 return hash;
             }
+        }
+
+        /// <summary>
+        /// 获取插入 SQL 语句。
+        /// </summary>
+        /// <returns>插入 SQL 语句。</returns>
+        public string GetInsertSql() => "INSERT INTO CallerInfos (MemberName, SourceFilePath, SourceLineNumber) VALUES ";
+
+        /// <summary>
+        /// 转换为值的 SQL 表示。
+        /// </summary>
+        /// <returns>值的 SQL 表示。</returns>
+        public string ToValueSql()
+        {
+            var member = MemberName == null ? "NULL" : $"'{MemberName.Replace("'", "''")}'";
+            var file = SourceFilePath == null ? "NULL" : $"'{SourceFilePath.Replace("'", "''")}'";
+            var line = SourceLineNumber.HasValue ? SourceLineNumber.Value.ToString() : "NULL";
+            return $"({member}, {file}, {line})";
         }
     }
 }
