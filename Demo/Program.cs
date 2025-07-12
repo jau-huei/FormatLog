@@ -148,11 +148,10 @@ namespace Demo
                 .WithFormat("八八乘法")
                 .WithArgs("4")
                 .OrderBy(OrderType.OrderByTimeAscending);
-            long? lastId = null;
             DateTime? lastCreatedAt = null;
             while (true)
             {
-                queryModel.WithLastId(lastId).WithLastCreatedAt(lastCreatedAt);
+                queryModel.WithLastCreatedAt(lastCreatedAt);
                 var stopWatch = Stopwatch.StartNew();
                 var pageResult = await queryModel.KeysetPaginationAsync();
                 stopWatch.Stop();
@@ -164,7 +163,6 @@ namespace Demo
                 lines.AddRange(GetQueryResultLines(pageResult, stopWatch));
                 DisplayLines(lines, lastLineCount, Console.WindowWidth, GetDisplayWidth);
                 lastLineCount = lines.Count;
-                lastId = pageResult.NextCursorId;
                 lastCreatedAt = pageResult.NextCursorCreatedAt;
                 await Task.Delay(10);
             }
@@ -179,7 +177,6 @@ namespace Demo
             var queryModel = new QueryModel()
                 .WithFormat("系统信息")
                 .OrderBy(OrderType.OrderByTimeDescending)
-                .WithLastId(null)
                 .WithLastCreatedAt(null);
             while (true)
             {

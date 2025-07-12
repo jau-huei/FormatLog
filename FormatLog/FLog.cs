@@ -86,7 +86,7 @@ namespace FormatLog
                 while (_logQueue.TryDequeue(out var log))
                     logs.Add(log);
 
-                logs = logs.OrderByDescending(l => l.CreatedAt).ToList();
+                logs = logs.OrderBy(l => l.CreatedAt).ToList();
 
                 if (logs.Count > 0)
                 {
@@ -370,23 +370,17 @@ namespace FormatLog
             if (queryModel.OrderType == OrderType.OrderByTimeAscending)
             {
                 logs = logs.OrderBy(l => l.CreatedAt).ThenBy(l => l.Id);
-                if (queryModel.LastCreatedAt.HasValue && queryModel.LastId.HasValue)
+                if (queryModel.LastCreatedAt.HasValue)
                 {
-                    logs = logs.Where(l =>
-                        l.CreatedAt > queryModel.LastCreatedAt.Value ||
-                        (l.CreatedAt == queryModel.LastCreatedAt.Value && l.Id > queryModel.LastId.Value)
-                    );
+                    logs = logs.Where(l => l.CreatedAt >= queryModel.LastCreatedAt.Value);
                 }
             }
             else
             {
                 logs = logs.OrderByDescending(l => l.CreatedAt).ThenByDescending(l => l.Id);
-                if (queryModel.LastCreatedAt.HasValue && queryModel.LastId.HasValue)
+                if (queryModel.LastCreatedAt.HasValue)
                 {
-                    logs = logs.Where(l =>
-                        l.CreatedAt < queryModel.LastCreatedAt.Value ||
-                        (l.CreatedAt == queryModel.LastCreatedAt.Value && l.Id < queryModel.LastId.Value)
-                    );
+                    logs = logs.Where(l => l.CreatedAt <= queryModel.LastCreatedAt.Value);
                 }
             }
 

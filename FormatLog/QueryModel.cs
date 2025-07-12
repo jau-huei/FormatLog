@@ -46,11 +46,6 @@
         public DateTime? StartTime { get; set; }
 
         /// <summary>
-        /// 游标分页：上一页最后一条日志的主键 Id。
-        /// </summary>
-        public long? LastId { get; set; }
-
-        /// <summary>
         /// 游标分页：上一页最后一条日志的创建时间。
         /// </summary>
         public DateTime? LastCreatedAt { get; set; }
@@ -107,17 +102,6 @@
         public QueryModel WithLevel(LogLevel level)
         {
             Level = level;
-            return this;
-        }
-
-        /// <summary>
-        /// 设置游标 Id。
-        /// </summary>
-        /// <param name="lastId">上一页最后一条日志的主键 Id。</param>
-        /// <returns>返回当前查询模型实例。</returns>
-        public QueryModel WithLastId(long? lastId)
-        {
-            LastId = lastId;
             return this;
         }
 
