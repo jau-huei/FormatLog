@@ -6,7 +6,20 @@ namespace FormatLog
     /// <summary>
     /// 表示日志信息。
     /// </summary>
-    [Index(nameof(Level), nameof(CreatedAt), nameof(FormatId), nameof(CallerInfoId), nameof(Arg0Id), nameof(Arg1Id), nameof(Arg2Id), nameof(Arg3Id), nameof(Arg4Id), nameof(Arg5Id), nameof(Arg6Id), nameof(Arg7Id), nameof(Arg8Id), nameof(Arg9Id))]
+    [Index(nameof(Level))]
+    [Index(nameof(CreatedAt))]
+    [Index(nameof(FormatId))]
+    [Index(nameof(CallerInfoId))]
+    [Index(nameof(Arg0Id))]
+    [Index(nameof(Arg1Id))]
+    [Index(nameof(Arg2Id))]
+    [Index(nameof(Arg3Id))]
+    [Index(nameof(Arg4Id))]
+    [Index(nameof(Arg5Id))]
+    [Index(nameof(Arg6Id))]
+    [Index(nameof(Arg7Id))]
+    [Index(nameof(Arg8Id))]
+    [Index(nameof(Arg9Id))]
     public class Log : ISqlInsertable
     {
         /// <summary>

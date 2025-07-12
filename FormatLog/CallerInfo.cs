@@ -5,7 +5,9 @@ namespace FormatLog
     /// <summary>
     /// 表示记录日志时的调用上下文信息，包括成员名称、源文件路径和行号。
     /// </summary>
-    [Index(nameof(MemberName), nameof(SourceFilePath), nameof(SourceLineNumber))]
+    [Index(nameof(MemberName))]
+    [Index(nameof(SourceFilePath))]
+    [Index(nameof(SourceLineNumber))]
     public class CallerInfo : ISqlInsertable
     {
         /// <summary>
