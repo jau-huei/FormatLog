@@ -174,10 +174,6 @@ namespace Demo
         /// </summary>
         private static async Task RecoderSystemInfoAsync()
         {
-            var queryModel = new QueryModel()
-                .WithFormat("系统信息")
-                .OrderBy(OrderType.OrderByTimeDescending)
-                .WithLastCreatedAt(null);
             while (true)
             {
                 // 操作系统与环境信息
@@ -218,10 +214,6 @@ namespace Demo
                 ).WithCallerInfo();
 
                 FLog.Add(log);
-
-                // 游标分页查询系统信息日志
-                var result = await queryModel.KeysetPaginationAsync();
-                // 可在此处理 result.Items ...
 
                 await Task.Delay(10000); // 10秒采集一次
             }
