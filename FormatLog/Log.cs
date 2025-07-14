@@ -8,7 +8,7 @@ namespace FormatLog
     /// 表示日志信息。
     /// </summary>
     [Index(nameof(Level))]
-    [Index(nameof(CreatedAt))]
+    [Index(nameof(CreatedTick))]
     [Index(nameof(FormatId))]
     [Index(nameof(CallerInfoId))]
     [Index(nameof(Arg0Id))]
@@ -154,8 +154,14 @@ namespace FormatLog
         public long? Arg9Id { get; set; }
 
         /// <summary>
+        /// 获取或设置日志创建时间(Tick)。
+        /// </summary>
+        public long CreatedTick { get { return CreatedAt.Ticks; } set { CreatedAt = new DateTime(value); } }
+
+        /// <summary>
         /// 获取或设置日志创建时间。
         /// </summary>
+        [NotMapped]
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
         /// <summary>
@@ -318,7 +324,7 @@ namespace FormatLog
         /// 获取插入日志的 SQL 语句。
         /// </summary>
         /// <returns>插入日志的 SQL 语句。</returns>
-        public string GetInsertSql() => "INSERT INTO Logs (Level, FormatId, CallerInfoId, Arg0Id, Arg1Id, Arg2Id, Arg3Id, Arg4Id, Arg5Id, Arg6Id, Arg7Id, Arg8Id, Arg9Id, CreatedAt) VALUES ";
+        public string GetInsertSql() => "INSERT INTO Logs (Level, FormatId, CallerInfoId, Arg0Id, Arg1Id, Arg2Id, Arg3Id, Arg4Id, Arg5Id, Arg6Id, Arg7Id, Arg8Id, Arg9Id, CreatedTick) VALUES ";
 
         /// <summary>
         /// 将日志转换为 SQL 值字符串。
@@ -327,7 +333,7 @@ namespace FormatLog
         public string ToValueSql()
         {
             string val(long? v) => v.HasValue ? v.Value.ToString() : "NULL";
-            return $"({(int)Level},{FormatId},{val(CallerInfoId)},{val(Arg0Id)},{val(Arg1Id)},{val(Arg2Id)},{val(Arg3Id)},{val(Arg4Id)},{val(Arg5Id)},{val(Arg6Id)},{val(Arg7Id)},{val(Arg8Id)},{val(Arg9Id)},'{CreatedAt:yyyy-MM-dd HH:mm:ss.fffffff}')";
+            return $"({(int)Level},{FormatId},{val(CallerInfoId)},{val(Arg0Id)},{val(Arg1Id)},{val(Arg2Id)},{val(Arg3Id)},{val(Arg4Id)},{val(Arg5Id)},{val(Arg6Id)},{val(Arg7Id)},{val(Arg8Id)},{val(Arg9Id)},'{CreatedTick}')";
         }
     }
 }

@@ -135,5 +135,23 @@
             NextCursorId = null;
             return this;
         }
+
+        /// <summary>
+        /// 设置日志时间范围（要求同一天且 StartTime &lt;= EndTime）。
+        /// </summary>
+        /// <param name="start">起始时间。</param>
+        /// <param name="end">结束时间。</param>
+        /// <returns>返回当前查询模型实例。</returns>
+        public QueryModel WithTime(DateTime start, DateTime end)
+        {
+            if (start.Date != end.Date)
+                return this;
+            if (start > end)
+                return this;
+
+            StartTime = start;
+            EndTime = end;
+            return this;
+        }
     }
 }

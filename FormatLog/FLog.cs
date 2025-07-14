@@ -99,7 +99,7 @@ namespace FormatLog
                 while (processingQueue.TryDequeue(out var log))
                     logs.Add(log);
 
-                logs = logs.OrderBy(l => l.CreatedAt).ToList();
+                logs = logs.OrderBy(l => l.CreatedTick).ToList();
 
                 if (logs.Count > 0)
                 {
@@ -371,9 +371,9 @@ namespace FormatLog
             if (queryModel.Level.HasValue)
                 logs = logs.Where(l => l.Level == queryModel.Level.Value);
             if (queryModel.StartTime.HasValue)
-                logs = logs.Where(l => l.CreatedAt >= queryModel.StartTime.Value);
+                logs = logs.Where(l => l.CreatedTick >= queryModel.StartTime.Value.Ticks);
             if (queryModel.EndTime.HasValue)
-                logs = logs.Where(l => l.CreatedAt <= queryModel.EndTime.Value);
+                logs = logs.Where(l => l.CreatedTick <= queryModel.EndTime.Value.Ticks);
 
             if (!string.IsNullOrWhiteSpace(queryModel.FormatString))
             {

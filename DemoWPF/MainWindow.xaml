@@ -69,6 +69,14 @@
                         <RadioButton x:Name="rbOrderDesc" Content="ID 降序" GroupName="OrderType" Width="90" Margin="0,0,10,0"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Grid.Row="2" Margin="0,0,0,10">
+                        <TextBlock Text="开始日期:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <DatePicker x:Name="dpStartDate" Width="120" Margin="0,0,10,0"/>
+                        <TextBlock Text="开始时间:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBox x:Name="tbStartTime" Width="80" Margin="0,0,10,0" Text="00:00:00"/>
+                        <TextBlock Text="结束日期:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <DatePicker x:Name="dpEndDate" Width="120" Margin="0,0,10,0"/>
+                        <TextBlock Text="结束时间:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                        <TextBox x:Name="tbEndTime" Width="80" Margin="0,0,10,0" Text="23:59:59"/>
                         <TextBlock x:Name="txtQueryTime" Text="" FontWeight="Bold"/>
                     </StackPanel>
                     <ListView x:Name="lvLogs" Grid.Row="3" Margin="0,0,0,10">

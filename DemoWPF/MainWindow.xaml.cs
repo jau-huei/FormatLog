@@ -59,6 +59,22 @@ namespace DemoWPF
                 _queryModel.WithLevel((LogLevel)(cmbLevel.SelectedIndex - 1));
             }
 
+            // 新增：读取时间范围并设置
+            if (dpStartDate.SelectedDate.HasValue && dpEndDate.SelectedDate.HasValue)
+            {
+                try
+                {
+                    var startDate = dpStartDate.SelectedDate.Value;
+                    var endDate = dpEndDate.SelectedDate.Value;
+                    var startTime = TimeSpan.Parse(tbStartTime.Text);
+                    var endTime = TimeSpan.Parse(tbEndTime.Text);
+                    var start = startDate.Date + startTime;
+                    var end = endDate.Date + endTime;
+                    _queryModel.WithTime(start, end);
+                }
+                catch { /* 时间解析失败时忽略 */ }
+            }
+
             if (rbOrderAsc.IsChecked == true)
             {
                 _queryModel.OrderBy(OrderType.OrderByIdAscending);
@@ -236,7 +252,7 @@ namespace DemoWPF
                     var info = string.Join(", ", drives.Where(d => d.IsReady).Select(d => $"{d.Name} {d.TotalFreeSpace / 1024 / 1024}MB/{d.TotalSize / 1024 / 1024}MB"));
                     var log = new Log(GetSelectedWriteLogLevel(), "磁盘信息：{0}", info).WithCallerInfo();
                     FLog.Add(log);
-                    await Task.Delay(10, token);
+                    await Task.Delay(5, token);
                 }
             }
             catch (Exception ex)
@@ -262,7 +278,7 @@ namespace DemoWPF
                     double result = 1.0 * a / b;
                     var log = new Log(GetSelectedWriteLogLevel(), "除法日志：{0} / {1} = {2:F2}", a, b, result).WithCallerInfo();
                     FLog.Add(log);
-                    await Task.Delay(10, token);
+                    await Task.Delay(5, token);
                 }
             }
             catch (Exception ex)
@@ -285,7 +301,7 @@ namespace DemoWPF
                     var text = new string('长', 100) + DateTime.Now;
                     var log = new Log(GetSelectedWriteLogLevel(), "长文本：{0}", text).WithCallerInfo();
                     FLog.Add(log);
-                    await Task.Delay(10, token);
+                    await Task.Delay(5, token);
                 }
             }
             catch (Exception ex)
@@ -311,7 +327,7 @@ namespace DemoWPF
                     int result = a * b;
                     var log = new Log(GetSelectedWriteLogLevel(), "乘法日志：{0} x {1} = {2}", a, b, result).WithCallerInfo();
                     FLog.Add(log);
-                    await Task.Delay(10, token);
+                    await Task.Delay(5, token);
                 }
             }
             catch (Exception ex)
@@ -344,7 +360,7 @@ namespace DemoWPF
                     catch { }
                     var log = new Log(GetSelectedWriteLogLevel(), "网络信息：主机 {0}, IP {1}", host ?? "未知", ip ?? "未知").WithCallerInfo();
                     FLog.Add(log);
-                    await Task.Delay(10, token);
+                    await Task.Delay(5, token);
                 }
             }
             catch (Exception ex)
@@ -368,7 +384,7 @@ namespace DemoWPF
                     var str = Guid.NewGuid().ToString();
                     var log = new Log(GetSelectedWriteLogLevel(), "随机字符串：{0}", str).WithCallerInfo();
                     FLog.Add(log);
-                    await Task.Delay(10, token);
+                    await Task.Delay(5, token);
                 }
             }
             catch (Exception ex)
@@ -391,7 +407,7 @@ namespace DemoWPF
                     var text = "短文本" + DateTime.Now.Second;
                     var log = new Log(GetSelectedWriteLogLevel(), "短文本：{0}", text).WithCallerInfo();
                     FLog.Add(log);
-                    await Task.Delay(10, token);
+                    await Task.Delay(5, token);
                 }
             }
             catch (Exception ex)
@@ -420,7 +436,7 @@ namespace DemoWPF
                     var totalMemory = GC.GetTotalMemory(false) / 1024 / 1024;
                     var log = new Log(GetSelectedWriteLogLevel(), "系统信息 | OS: {0} ({1}), 计算机: {2}, 用户: {3}, CPU核心: {4}, .NET: {5}, 进程内存: {6}MB", os, is64, machine, user, processorCount, dotnet, totalMemory).WithCallerInfo();
                     FLog.Add(log);
-                    await Task.Delay(10, token);
+                    await Task.Delay(5, token);
                 }
             }
             catch (Exception ex)
@@ -443,7 +459,7 @@ namespace DemoWPF
                     var ts = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
                     var log = new Log(GetSelectedWriteLogLevel(), "时间戳：{0}", ts).WithCallerInfo();
                     FLog.Add(log);
-                    await Task.Delay(10, token);
+                    await Task.Delay(5, token);
                 }
             }
             catch (Exception ex)
@@ -467,7 +483,7 @@ namespace DemoWPF
                     var domain = Environment.UserDomainName;
                     var log = new Log(GetSelectedWriteLogLevel(), "用户信息：{0}@{1}", user, domain).WithCallerInfo();
                     FLog.Add(log);
-                    await Task.Delay(10, token);
+                    await Task.Delay(5, token);
                 }
             }
             catch (Exception ex)
