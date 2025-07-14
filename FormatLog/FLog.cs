@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Linq.Expressions;
+using System.Diagnostics;
 
 namespace FormatLog
 {
@@ -377,30 +378,33 @@ namespace FormatLog
 
             if (!string.IsNullOrWhiteSpace(queryModel.FormatString))
             {
-                var formatIds = await db.Formats.AsNoTracking().Where(f => f.FormatString.Contains(queryModel.FormatString)).Select(f => f.Id).ToListAsync();
-                logs = logs.Where(l => formatIds.Contains(l.FormatId));
+                logs = logs.Where(l =>
+                    (l.Format!.FormatString!.Contains(queryModel.FormatString))
+                );
             }
 
             if (!string.IsNullOrWhiteSpace(queryModel.CallerInfo))
             {
-                var callerIds = await db.CallerInfos.AsNoTracking().Where(c => c.MemberName!.Contains(queryModel.CallerInfo) || c.SourceFilePath!.Contains(queryModel.CallerInfo)).Select(f => f.Id).ToListAsync();
-                logs = logs.Where(l => l.CallerInfoId.HasValue && callerIds.Contains(l.CallerInfoId.Value));
+                logs = logs.Where(l =>
+                    (l.CallerInfo!.SourceFilePath!.Contains(queryModel.CallerInfo)) ||
+                    (l.CallerInfo!.MemberName!.Contains(queryModel.CallerInfo)) ||
+                    (l.CallerInfo!.SourceLineNumber!.ToString()!.Contains(queryModel.CallerInfo))
+                );
             }
 
             if (!string.IsNullOrWhiteSpace(queryModel.Argument))
             {
-                var argIds = await db.Arguments.AsNoTracking().Where(arg => arg.Value!.Contains(queryModel.Argument)).Select(arg => arg.Id).ToListAsync();
                 logs = logs.Where(l =>
-                    (l.Arg0Id.HasValue && argIds.Contains(l.Arg0Id.Value)) ||
-                    (l.Arg1Id.HasValue && argIds.Contains(l.Arg1Id.Value)) ||
-                    (l.Arg2Id.HasValue && argIds.Contains(l.Arg2Id.Value)) ||
-                    (l.Arg3Id.HasValue && argIds.Contains(l.Arg3Id.Value)) ||
-                    (l.Arg4Id.HasValue && argIds.Contains(l.Arg4Id.Value)) ||
-                    (l.Arg5Id.HasValue && argIds.Contains(l.Arg5Id.Value)) ||
-                    (l.Arg6Id.HasValue && argIds.Contains(l.Arg6Id.Value)) ||
-                    (l.Arg7Id.HasValue && argIds.Contains(l.Arg7Id.Value)) ||
-                    (l.Arg8Id.HasValue && argIds.Contains(l.Arg8Id.Value)) ||
-                    (l.Arg9Id.HasValue && argIds.Contains(l.Arg9Id.Value))
+                    (l.Arg0!.Value!.Contains(queryModel.Argument)) ||
+                    (l.Arg1!.Value!.Contains(queryModel.Argument)) ||
+                    (l.Arg2!.Value!.Contains(queryModel.Argument)) ||
+                    (l.Arg3!.Value!.Contains(queryModel.Argument)) ||
+                    (l.Arg4!.Value!.Contains(queryModel.Argument)) ||
+                    (l.Arg5!.Value!.Contains(queryModel.Argument)) ||
+                    (l.Arg6!.Value!.Contains(queryModel.Argument)) ||
+                    (l.Arg7!.Value!.Contains(queryModel.Argument)) ||
+                    (l.Arg8!.Value!.Contains(queryModel.Argument)) ||
+                    (l.Arg9!.Value!.Contains(queryModel.Argument))
                 );
             }
 
