@@ -106,7 +106,7 @@ namespace Demo
             var lines = new List<string>
             {
                 $"查询时间：{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}",
-                $"查询结果：{pageResult.Items.Count} 条日志，下一页游标Id: {pageResult.NextCursorId}, 下一页游标时间: {pageResult.NextCursorCreatedAt}，耗时 {stopWatch.ElapsedMilliseconds:F3} ms"
+                $"查询结果：{pageResult.Items.Count} 条日志，游标Id: [{pageResult.PreCursorId} - {pageResult.NextCursorId}], 耗时 {stopWatch.ElapsedMilliseconds:F3} ms"
             };
             lines.AddRange(pageResult.Items.Select(log => log.ToString()));
             return lines;
@@ -147,11 +147,23 @@ namespace Demo
             var queryModel = new QueryModel()
                 .WithFormat("八八乘法")
                 .WithArgs("4")
-                .OrderBy(OrderType.OrderByTimeAscending);
-            long? lastId = null;
+                .OrderBy(OrderType.OrderByTimeDescending);
+            long? cursorId = null;
+            long? preCursorId = null;
+            PageNavigationDirection pageNavigation = PageNavigationDirection.None;
+
             while (true)
             {
-                queryModel.WithLastId(lastId);
+                if (pageNavigation == PageNavigationDirection.Next)
+                {
+                    queryModel.WithCursorId(cursorId);
+                }
+                else if (pageNavigation == PageNavigationDirection.Previous)
+                {
+                    queryModel.WithPrevCursorId(preCursorId);
+                }
+                pageNavigation = PageNavigationDirection.None;
+
                 var stopWatch = Stopwatch.StartNew();
                 var pageResult = await queryModel.KeysetPaginationAsync();
                 stopWatch.Stop();
@@ -163,8 +175,12 @@ namespace Demo
                 lines.AddRange(GetQueryResultLines(pageResult, stopWatch));
                 DisplayLines(lines, lastLineCount, Console.WindowWidth, GetDisplayWidth);
                 lastLineCount = lines.Count;
-                lastId = pageResult.NextCursorId;
-                await Task.Delay(10);
+                cursorId = pageResult.NextCursorId;
+                preCursorId = pageResult.PreCursorId;
+
+                var key = Console.ReadKey();
+                if (key.Key == ConsoleKey.LeftArrow) pageNavigation = PageNavigationDirection.Previous;
+                if (key.Key == ConsoleKey.RightArrow) pageNavigation = PageNavigationDirection.Next;
             }
         }
 
@@ -250,7 +266,29 @@ namespace Demo
             // 用 Task.Run 启动查表任务
             _ = Task.Run(() => QueryAndDisplayLogsLoop());
 
-            Console.ReadKey();
+            while (true)
+            {
+                Thread.Sleep(100);
+            }
+        }
+
+        /// <summary>
+        /// 翻页操作
+        /// </summary>
+        public enum PageNavigationDirection
+        {
+            /// <summary>
+            /// 无翻页操作
+            /// </summary>
+            None,
+            /// <summary>
+            /// 上一页
+            /// </summary>
+            Previous,
+            /// <summary>
+            /// 下一页
+            /// </summary>
+            Next
         }
     }
 }

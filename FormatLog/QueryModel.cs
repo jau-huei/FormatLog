@@ -1,7 +1,9 @@
 ﻿namespace FormatLog
 {
     /// <summary>
-    /// 日志查询参数模型（游标分页专用）。
+    /// 日志查询参数模型，支持基于游标的高效分页检索。
+    /// 可用于向前/向后分页查询日志，包含排序、筛选、分页游标等参数。
+    /// 未来可扩展为双向分页（上一页/下一页）。
     /// </summary>
     public class QueryModel
     {
@@ -46,9 +48,14 @@
         public DateTime? StartTime { get; set; }
 
         /// <summary>
-        /// 游标分页：上一页最后一条日志的 ID。
+        /// 游标分页：下一页的游标主键 ID（用于查询下一页数据时定位起始位置）。
         /// </summary>
-        public long? LastId { get; set; }
+        public long? NextCursorId { get; set; }
+
+        /// <summary>
+        /// 游标分页：上一页的游标主键 ID（用于支持上一页查询）。
+        /// </summary>
+        public long? PrevCursorId { get; set; }
 
         /// <summary>
         /// 设置日志排序方式。
@@ -106,13 +113,26 @@
         }
 
         /// <summary>
-        /// 设置日志的 ID 游标分页参数。
+        /// 设置当前页的游标主键 ID（用于下一页/上一页查询）。
         /// </summary>
-        /// <param name="lastId">上一页最后一条日志的 ID。</param>
+        /// <param name="nextCursorId">当前页的游标主键 ID。</param>
         /// <returns>返回当前查询模型实例。</returns>
-        public QueryModel WithLastId(long? lastId)
+        public QueryModel WithCursorId(long? nextCursorId)
         {
-            LastId = lastId;
+            NextCursorId = nextCursorId;
+            PrevCursorId = null;
+            return this;
+        }
+
+        /// <summary>
+        /// 设置上一页的游标主键 ID（用于支持上一页查询）。
+        /// </summary>
+        /// <param name="prevCursorId">上一页的游标主键 ID。</param>
+        /// <returns>返回当前查询模型实例。</returns>
+        public QueryModel WithPrevCursorId(long? prevCursorId)
+        {
+            PrevCursorId = prevCursorId;
+            NextCursorId = null;
             return this;
         }
     }

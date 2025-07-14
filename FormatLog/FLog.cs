@@ -341,7 +341,13 @@ namespace FormatLog
         }
 
         /// <summary>
-        /// 根据游标分页参数异步获取日志。
+        /// 根据游标分页参数异步获取日志，支持双向分页（上一页/下一页）和升序/降序排序。
+        /// 根据 OrderType 决定排序方向，根据 NextCursorId/PrevCursorId 决定游标过滤。
+        /// - NextCursorId 有值时，表示下一页，按当前排序方向游标过滤。
+        /// - PrevCursorId 有值时，表示上一页，反向排序并取 pageSize 条，最后反转结果。
+        /// - 只允许 NextCursorId 或 PrevCursorId 有一个有值。
+        /// - 支持多条件筛选（级别、时间、格式、调用者、参数等）。
+        /// 返回 KeysetPage<Log>，包含当前页数据及上一页/下一页游标。
         /// </summary>
         /// <param name="queryModel">查询参数。</param>
         /// <returns>游标分页日志结果。</returns>
@@ -365,26 +371,6 @@ namespace FormatLog
                 .Include(l => l.Arg9)
                 .AsNoTracking()
                 .AsQueryable();
-
-            // 游标分页逻辑升序或降序
-            if (queryModel.OrderType == OrderType.OrderByTimeAscending)
-            {
-                if (queryModel.LastId.HasValue)
-                {
-                    logs = logs.Where(l => l.Id >= queryModel.LastId.Value);
-                }
-
-                logs = logs.OrderBy(l => l.Id);
-            }
-            else
-            {
-                if (queryModel.LastId.HasValue)
-                {
-                    logs = logs.Where(l => l.Id <= queryModel.LastId.Value);
-                }
-
-                logs = logs.OrderByDescending(l => l.Id);
-            }
 
             // 条件过滤
             if (queryModel.Level.HasValue)
@@ -424,22 +410,51 @@ namespace FormatLog
             }
 
             int pageSize = queryModel.PageSize > 0 ? queryModel.PageSize : 20;
-            var items = await logs.Take(pageSize).ToListAsync();
+            List<Log> items;
+            bool isAscending = queryModel.OrderType == OrderType.OrderByTimeAscending;
+
+            // 双向分页逻辑
+            if (queryModel.PrevCursorId.HasValue)
+            {
+                // 上一页，反向排序，游标过滤
+                if (isAscending)
+                {
+                    logs = logs.Where(l => l.Id <= queryModel.PrevCursorId.Value).OrderByDescending(l => l.Id);
+                }
+                else
+                {
+                    logs = logs.Where(l => l.Id >= queryModel.PrevCursorId.Value).OrderBy(l => l.Id);
+                }
+                items = await logs.Take(pageSize).ToListAsync();
+                items.Reverse(); // 反转为正常显示顺序
+            }
+            else
+            {
+                // 下一页或首页
+                if (queryModel.NextCursorId.HasValue)
+                {
+                    if (isAscending)
+                        logs = logs.Where(l => l.Id >= queryModel.NextCursorId.Value);
+                    else
+                        logs = logs.Where(l => l.Id <= queryModel.NextCursorId.Value);
+                }
+                logs = isAscending ? logs.OrderBy(l => l.Id) : logs.OrderByDescending(l => l.Id);
+                items = await logs.Take(pageSize).ToListAsync();
+            }
 
             long? nextCursorId = null;
-            DateTime? nextCursorCreatedAt = null;
+            long? prevCursorId = null;
             if (items.Count > 0)
             {
-                var last = items.Last();
-                nextCursorId = last.Id;
-                nextCursorCreatedAt = last.CreatedAt;
+                prevCursorId = items.First().Id;
+                nextCursorId = items.Last().Id;
             }
 
             return new KeysetPage<Log>
             {
                 Items = items,
+                PreCursorId = prevCursorId,
                 NextCursorId = nextCursorId,
-                NextCursorCreatedAt = nextCursorCreatedAt
             };
         }
 
