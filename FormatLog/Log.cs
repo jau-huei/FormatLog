@@ -172,6 +172,20 @@ namespace FormatLog
         }
 
         /// <summary>
+        /// 日志标签内容，使用 <tag> 标签包裹每个参数。
+        /// </summary>
+        [NotMapped]
+        public string TagContent
+        {
+            get
+            {
+                var args = GetArgumentsAsObject();
+                var tagArgs = args.Select(arg => $"<tag>{arg}</tag>").Cast<object?>().ToArray();
+                return string.Format(Format.FormatString, tagArgs);
+            }
+        }
+
+        /// <summary>
         /// 初始化 <see cref="Log"/> 类的新实例。
         /// </summary>
         public Log() { }

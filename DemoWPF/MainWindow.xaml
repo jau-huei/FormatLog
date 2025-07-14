@@ -77,7 +77,13 @@
                                 <GridViewColumn Header="#ID" Width="160" DisplayMemberBinding="{Binding Id}"/>
                                 <GridViewColumn Header="时间" Width="160" DisplayMemberBinding="{Binding CreatedAt}"/>
                                 <GridViewColumn Header="级别" Width="80" DisplayMemberBinding="{Binding Level}"/>
-                                <GridViewColumn Header="内容" Width="400" DisplayMemberBinding="{Binding Content}"/>
+                                <GridViewColumn Header="内容" Width="400">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock TextWrapping="Wrap" Loaded="LogTextBlock_Loaded"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
                                 <GridViewColumn Header="调用信息" Width="300" DisplayMemberBinding="{Binding CallerInfoString}"/>
                             </GridView>
                         </ListView.View>

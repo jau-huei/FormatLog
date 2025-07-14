@@ -477,6 +477,21 @@ namespace DemoWPF
         }
 
         /// <summary>
+        /// 日志内容TextBlock的Loaded事件处理。
+        /// </summary>
+        /// <param name="sender">事件源对象。</param>
+        /// <param name="e">事件参数。</param>
+        private void LogTextBlock_Loaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is TextBlock tb && tb.DataContext is LogViewModel vm)
+            {
+                tb.Inlines.Clear();
+                foreach (var inline in vm.Inlines)
+                    tb.Inlines.Add(inline);
+            }
+        }
+
+        /// <summary>
         /// 初始化 MainWindow 实例。
         /// </summary>
         public MainWindow()
