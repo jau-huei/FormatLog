@@ -9,27 +9,37 @@ namespace DemoWPF
     public class LogViewModel
     {
         /// <summary>
+        /// 日志ID。
+        /// </summary>
+        public long Id { get; set; }
+
+        /// <summary>
         /// 日志创建时间（格式：yyyy-MM-dd HH:mm:ss.fff）。
         /// </summary>
         public string CreatedAt { get; }
+
         /// <summary>
         /// 日志级别。
         /// </summary>
         public string Level { get; }
+
         /// <summary>
         /// 日志内容。
         /// </summary>
         public string Content { get; }
+
         /// <summary>
         /// 调用上下文信息字符串。
         /// </summary>
         public string CallerInfoString { get; }
+
         /// <summary>
         /// 使用指定的 <see cref="Log"/> 实例初始化 <see cref="LogViewModel"/>。
         /// </summary>
         /// <param name="log">日志实体。</param>
         public LogViewModel(Log log)
         {
+            Id = log.Id;
             CreatedAt = log.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss.fff");
             Level = log.Level.ToString();
             Content = log.Content;

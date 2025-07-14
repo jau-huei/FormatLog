@@ -58,6 +58,16 @@ namespace DemoWPF
             {
                 _queryModel.WithLevel((LogLevel)(cmbLevel.SelectedIndex - 1));
             }
+
+            if (rbOrderAsc.IsChecked == true)
+            {
+                _queryModel.OrderBy(OrderType.OrderByTimeAscending);
+            }
+            if (rbOrderDesc.IsChecked == true)
+            {
+                _queryModel.OrderBy(OrderType.OrderByTimeDescending);
+            }
+
             QueryLogs(true);
         }
 
@@ -114,6 +124,22 @@ namespace DemoWPF
             btnQuery.Click += BtnQuery_Click;
             btnPrevPage.Click += (s, e2) => { _queryModel.WithPrevCursorId(_prevCursorId); QueryLogs(false); };
             btnNextPage.Click += (s, e2) => { _queryModel.WithCursorId(_nextCursorId); QueryLogs(false); };
+            lvLogs.PreviewMouseWheel += (s, e2) =>
+            {
+                if (e2.Delta > 0 && _prevCursorId != null)
+                {
+                    _queryModel.WithPrevCursorId(_prevCursorId);
+                    QueryLogs(false);
+                    e2.Handled = true;
+                }
+                else if (e2.Delta < 0 && _nextCursorId != null)
+                {
+                    _queryModel.WithCursorId(_nextCursorId);
+                    QueryLogs(false);
+                    e2.Handled = true;
+                }
+            };
+
             lvLogs.ItemsSource = _logList;
 
             cmbLevel.SelectedIndex = 0; // 默认全部
