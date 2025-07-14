@@ -5,7 +5,7 @@ namespace FormatLog
     /// <summary>
     /// 表示日志参数。
     /// </summary>
-    [Index(nameof(Value))]
+    [Index(nameof(Value), IsUnique = true)]
     public class Argument : ISqlInsertable
     {
         /// <summary>
@@ -65,7 +65,7 @@ namespace FormatLog
         /// 获取插入参数的 SQL 语句。
         /// </summary>
         /// <returns>插入参数的 SQL 语句。</returns>
-        public string GetInsertSql() => "INSERT INTO Arguments (Value) VALUES ";
+        public string GetInsertSql() => "INSERT OR IGNORE INTO Arguments (Value) VALUES ";
 
         /// <summary>
         /// 将参数值转换为 SQL 表示。

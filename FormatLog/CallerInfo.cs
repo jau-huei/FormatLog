@@ -5,9 +5,7 @@ namespace FormatLog
     /// <summary>
     /// 表示记录日志时的调用上下文信息，包括成员名称、源文件路径和行号。
     /// </summary>
-    [Index(nameof(MemberName))]
-    [Index(nameof(SourceFilePath))]
-    [Index(nameof(SourceLineNumber))]
+    [Index(nameof(MemberName), nameof(SourceFilePath), nameof(SourceLineNumber), IsUnique = true)]
     public class CallerInfo : ISqlInsertable
     {
         /// <summary>
@@ -101,7 +99,7 @@ namespace FormatLog
         /// 获取插入 SQL 语句。
         /// </summary>
         /// <returns>插入 SQL 语句。</returns>
-        public string GetInsertSql() => "INSERT INTO CallerInfos (MemberName, SourceFilePath, SourceLineNumber) VALUES ";
+        public string GetInsertSql() => "INSERT OR IGNORE INTO CallerInfos (MemberName, SourceFilePath, SourceLineNumber) VALUES ";
 
         /// <summary>
         /// 转换为值的 SQL 表示。

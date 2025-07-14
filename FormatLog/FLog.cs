@@ -195,36 +195,19 @@ namespace FormatLog
 
             var dbSet = dbSetSelector(db);
 
-            // 查询已存在的实体
-            var existing = new List<T>();
+            // 1. 批量插入（已存在的会被忽略）
+            await AddRangeAndCommitAsync(dbSet, entities);
+
+            // 2. 查询所有实体（带主键）
+            var result = new List<T>();
             foreach (var entity in entities)
             {
                 var expr = uniqueExpressionFactory(entity);
                 var found = await dbSet.FirstOrDefaultAsync(expr);
                 if (found != null)
-                    existing.Add(found);
+                    result.Add(found);
             }
-
-            // 未找到的实体
-            var notFound = entities.Where(e =>
-                !existing.Any(dbEntity => uniqueExpressionFactory(e).Compile().Invoke(dbEntity))
-            ).ToList();
-
-            if (notFound.Count > 0)
-            {
-                await AddRangeAndCommitAsync(dbSet, notFound);
-
-                // 新增的也要查出来
-                foreach (var entity in notFound)
-                {
-                    var expr = uniqueExpressionFactory(entity);
-                    var found = await dbSet.FirstOrDefaultAsync(expr);
-                    if (found != null)
-                        existing.Add(found);
-                }
-            }
-
-            return existing;
+            return result;
         }
 
         /// <summary>

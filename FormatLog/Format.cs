@@ -5,7 +5,7 @@ namespace FormatLog
     /// <summary>
     /// 表示日志格式。
     /// </summary>
-    [Index(nameof(FormatString))]
+    [Index(nameof(FormatString), IsUnique = true)]
     public class Format : ISqlInsertable
     {
         /// <summary>
@@ -69,7 +69,7 @@ namespace FormatLog
         /// 获取插入 SQL 语句。
         /// </summary>
         /// <returns>插入 SQL 语句。</returns>
-        public string GetInsertSql() => "INSERT INTO Formats (FormatString) VALUES ";
+        public string GetInsertSql() => "INSERT OR IGNORE INTO Formats (FormatString) VALUES ";
 
         /// <summary>
         /// 转换为值的 SQL 表示。
