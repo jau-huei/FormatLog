@@ -369,19 +369,21 @@ namespace FormatLog
             // 游标分页逻辑升序或降序
             if (queryModel.OrderType == OrderType.OrderByTimeAscending)
             {
-                logs = logs.OrderBy(l => l.CreatedAt).ThenBy(l => l.Id);
-                if (queryModel.LastCreatedAt.HasValue)
+                if (queryModel.LastId.HasValue)
                 {
-                    logs = logs.Where(l => l.CreatedAt >= queryModel.LastCreatedAt.Value);
+                    logs = logs.Where(l => l.Id >= queryModel.LastId.Value);
                 }
+
+                logs = logs.OrderBy(l => l.Id);
             }
             else
             {
-                logs = logs.OrderByDescending(l => l.CreatedAt).ThenByDescending(l => l.Id);
-                if (queryModel.LastCreatedAt.HasValue)
+                if (queryModel.LastId.HasValue)
                 {
-                    logs = logs.Where(l => l.CreatedAt <= queryModel.LastCreatedAt.Value);
+                    logs = logs.Where(l => l.Id <= queryModel.LastId.Value);
                 }
+
+                logs = logs.OrderByDescending(l => l.Id);
             }
 
             // 条件过滤

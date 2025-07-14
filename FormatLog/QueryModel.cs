@@ -46,9 +46,9 @@
         public DateTime? StartTime { get; set; }
 
         /// <summary>
-        /// 游标分页：上一页最后一条日志的创建时间。
+        /// 游标分页：上一页最后一条日志的 ID。
         /// </summary>
-        public DateTime? LastCreatedAt { get; set; }
+        public long? LastId { get; set; }
 
         /// <summary>
         /// 设置日志排序方式。
@@ -106,13 +106,13 @@
         }
 
         /// <summary>
-        /// 设置游标 CreatedAt。
+        /// 设置日志的 ID 游标分页参数。
         /// </summary>
-        /// <param name="lastCreatedAt">上一页最后一条日志的创建时间。</param>
+        /// <param name="lastId">上一页最后一条日志的 ID。</param>
         /// <returns>返回当前查询模型实例。</returns>
-        public QueryModel WithLastCreatedAt(DateTime? lastCreatedAt)
+        public QueryModel WithLastId(long? lastId)
         {
-            LastCreatedAt = lastCreatedAt;
+            LastId = lastId;
             return this;
         }
     }

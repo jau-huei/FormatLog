@@ -148,10 +148,10 @@ namespace Demo
                 .WithFormat("八八乘法")
                 .WithArgs("4")
                 .OrderBy(OrderType.OrderByTimeAscending);
-            DateTime? lastCreatedAt = null;
+            long? lastId = null;
             while (true)
             {
-                queryModel.WithLastCreatedAt(lastCreatedAt);
+                queryModel.WithLastId(lastId);
                 var stopWatch = Stopwatch.StartNew();
                 var pageResult = await queryModel.KeysetPaginationAsync();
                 stopWatch.Stop();
@@ -163,7 +163,7 @@ namespace Demo
                 lines.AddRange(GetQueryResultLines(pageResult, stopWatch));
                 DisplayLines(lines, lastLineCount, Console.WindowWidth, GetDisplayWidth);
                 lastLineCount = lines.Count;
-                lastCreatedAt = pageResult.NextCursorCreatedAt;
+                lastId = pageResult.NextCursorId;
                 await Task.Delay(10);
             }
         }
@@ -227,25 +227,25 @@ namespace Demo
         public static void Main(string[] args)
         {
             // 多线程日志写入测试
-            // 小内容数据
-            _ = Task.Run(() => MultiplicationAsync("三三乘法： {0} x {1} = {2}", 3));
-            _ = Task.Run(() => MultiplicationAsync("四四乘法： {0} x {1} = {2}", 4));
-            _ = Task.Run(() => MultiplicationAsync("五五乘法： {0} x {1} = {2}", 5));
-            _ = Task.Run(() => MultiplicationAsync("六六乘法： {0} x {1} = {2}", 6));
-            _ = Task.Run(() => MultiplicationAsync("七七乘法： {0} x {1} = {2}", 7));
-            _ = Task.Run(() => MultiplicationAsync("八八乘法： {0} x {1} = {2}", 8));
-            _ = Task.Run(() => MultiplicationAsync("九九乘法： {0} x {1} = {2}", 9));
+            //// 小内容数据
+            //_ = Task.Run(() => MultiplicationAsync("三三乘法： {0} x {1} = {2}", 3));
+            //_ = Task.Run(() => MultiplicationAsync("四四乘法： {0} x {1} = {2}", 4));
+            //_ = Task.Run(() => MultiplicationAsync("五五乘法： {0} x {1} = {2}", 5));
+            //_ = Task.Run(() => MultiplicationAsync("六六乘法： {0} x {1} = {2}", 6));
+            //_ = Task.Run(() => MultiplicationAsync("七七乘法： {0} x {1} = {2}", 7));
+            //_ = Task.Run(() => MultiplicationAsync("八八乘法： {0} x {1} = {2}", 8));
+            //_ = Task.Run(() => MultiplicationAsync("九九乘法： {0} x {1} = {2}", 9));
 
-            _ = Task.Run(() => DivisionAsync("三三除法： {0} / {1} = {2}", 3));
-            _ = Task.Run(() => DivisionAsync("四四除法： {0} / {1} = {2}", 4));
-            _ = Task.Run(() => DivisionAsync("五五除法： {0} / {1} = {2}", 5));
-            _ = Task.Run(() => DivisionAsync("六六除法： {0} / {1} = {2}", 6));
-            _ = Task.Run(() => DivisionAsync("七七除法： {0} / {1} = {2}", 7));
-            _ = Task.Run(() => DivisionAsync("八八除法： {0} / {1} = {2}", 8));
-            _ = Task.Run(() => DivisionAsync("九九除法： {0} / {1} = {2}", 9));
+            //_ = Task.Run(() => DivisionAsync("三三除法： {0} / {1} = {2}", 3));
+            //_ = Task.Run(() => DivisionAsync("四四除法： {0} / {1} = {2}", 4));
+            //_ = Task.Run(() => DivisionAsync("五五除法： {0} / {1} = {2}", 5));
+            //_ = Task.Run(() => DivisionAsync("六六除法： {0} / {1} = {2}", 6));
+            //_ = Task.Run(() => DivisionAsync("七七除法： {0} / {1} = {2}", 7));
+            //_ = Task.Run(() => DivisionAsync("八八除法： {0} / {1} = {2}", 8));
+            //_ = Task.Run(() => DivisionAsync("九九除法： {0} / {1} = {2}", 9));
 
-            // 大内容数据
-            _ = Task.Run(() => RecoderSystemInfoAsync());
+            //// 大内容数据
+            //_ = Task.Run(() => RecoderSystemInfoAsync());
 
             // 用 Task.Run 启动查表任务
             _ = Task.Run(() => QueryAndDisplayLogsLoop());
