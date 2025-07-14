@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Runtime.CompilerServices;
 
 namespace FormatLog
@@ -156,6 +157,19 @@ namespace FormatLog
         /// 获取或设置日志创建时间。
         /// </summary>
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        /// <summary>
+        /// 日志内容，格式化后的字符串表示。
+        /// </summary>
+        [NotMapped]
+        public string Content
+        {
+            get
+            {
+                var args = GetArgumentsAsObject();
+                return string.Format(Format.FormatString, args);
+            }
+        }
 
         /// <summary>
         /// 初始化 <see cref="Log"/> 类的新实例。
