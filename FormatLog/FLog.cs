@@ -22,11 +22,6 @@ namespace FormatLog
         private static readonly TimeSpan _interval = TimeSpan.FromSeconds(2);
 
         /// <summary>
-        /// 日志队列，暂存待写入数据库的日志。
-        /// </summary>
-        private static readonly ConcurrentQueue<Log> _logQueue = new();
-
-        /// <summary>
         /// 用于取消后台日志写入任务的令牌源。
         /// </summary>
         private static CancellationTokenSource? _cts;
@@ -35,6 +30,21 @@ namespace FormatLog
         /// 标记是否已初始化后台日志写入。
         /// </summary>
         private static bool _initialized = false;
+
+        /// <summary>
+        /// 日志双缓冲队列A。用于收集待写入数据库的日志。
+        /// </summary>
+        private static ConcurrentQueue<Log> _logQueueA = new();
+
+        /// <summary>
+        /// 日志双缓冲队列B。与队列A交替作为写入或处理队列，实现高效批量日志处理。
+        /// </summary>
+        private static ConcurrentQueue<Log> _logQueueB = new();
+
+        /// <summary>
+        /// 当前活跃的日志写入队列。Flush 时会原子切换，保证日志写入与批量处理互不阻塞。
+        /// </summary>
+        private static volatile ConcurrentQueue<Log> _logQueueActive = _logQueueA;
 
         /// <summary>
         /// 后台日志写入任务。
@@ -79,11 +89,14 @@ namespace FormatLog
         /// <param name="token">取消操作的令牌。</param>
         private static async Task FlushAsync(DateTime date, CancellationToken token = default)
         {
+            // 交换队列
+            var processingQueue = Interlocked.Exchange(ref _logQueueActive, _logQueueActive == _logQueueA ? _logQueueB : _logQueueA);
+
             var logs = new List<Log>();
             try
             {
                 var totalStopwatch = System.Diagnostics.Stopwatch.StartNew();
-                while (_logQueue.TryDequeue(out var log))
+                while (processingQueue.TryDequeue(out var log))
                     logs.Add(log);
 
                 logs = logs.OrderBy(l => l.CreatedAt).ToList();
@@ -293,15 +306,14 @@ namespace FormatLog
         public static FlushInfo FlushInfo { get; private set; } = new FlushInfo();
 
         /// <summary>
-        /// 将日志添加到日志池队列。
+        /// 将日志添加到当前活跃的日志队列（双缓冲），确保高并发下写入与批量处理分离。
         /// </summary>
-        /// <param name="log">要添加的日志对象。</param>
         public static void Add(Log log)
         {
             if (!_initialized)
                 InitLogBackgroundWorker();
 
-            _logQueue.Enqueue(log);
+            _logQueueActive.Enqueue(log);
         }
 
         /// <summary>
