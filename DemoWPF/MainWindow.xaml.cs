@@ -4,13 +4,14 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using MahApps.Metro.Controls;
 
 namespace DemoWPF
 {
     /// <summary>
     /// 主窗口类，负责日志写入和控制界面交互。
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow : MetroWindow
     {
         /// <summary>
         /// 记录每个日志写入类型对应的取消令牌源。
@@ -60,17 +61,19 @@ namespace DemoWPF
             }
 
             // 新增：读取时间范围并设置
-            if (dpStartDate.SelectedDate.HasValue && dpEndDate.SelectedDate.HasValue)
+            if (dpStart.SelectedDateTime.HasValue && dpEnd.SelectedDateTime.HasValue)
             {
                 try
                 {
-                    var startDate = dpStartDate.SelectedDate.Value;
-                    var endDate = dpEndDate.SelectedDate.Value;
-                    var startTime = TimeSpan.Parse(tbStartTime.Text);
-                    var endTime = TimeSpan.Parse(tbEndTime.Text);
-                    var start = startDate.Date + startTime;
-                    var end = endDate.Date + endTime;
-                    _queryModel.WithTime(start, end);
+                    // 确保开始时间小于结束时间
+                    if (dpStart.SelectedDateTime.Value > dpEnd.SelectedDateTime.Value)
+                    {
+                        var temp = dpStart.SelectedDateTime.Value;
+                        dpStart.SelectedDateTime = dpEnd.SelectedDateTime.Value;
+                        dpEnd.SelectedDateTime = temp;
+                    }
+
+                    _queryModel.WithTime(dpStart.SelectedDateTime.Value, dpEnd.SelectedDateTime.Value);
                 }
                 catch { /* 时间解析失败时忽略 */ }
             }
