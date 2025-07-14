@@ -6,13 +6,13 @@
     public enum OrderType
     {
         /// <summary>
-        /// 按时间升序排序。
+        /// 按 ID 升序排序。
         /// </summary>
-        OrderByTimeAscending,
+        OrderByIdAscending,
 
         /// <summary>
-        /// 按时间降序排序。
+        /// 按 ID 降序排序。
         /// </summary>
-        OrderByTimeDescending
+        OrderByIdDescending
     }
 }

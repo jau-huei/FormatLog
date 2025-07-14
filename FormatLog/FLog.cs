@@ -406,7 +406,7 @@ namespace FormatLog
 
             int pageSize = queryModel.PageSize > 0 ? queryModel.PageSize : 20;
             List<Log> items;
-            bool isAscending = queryModel.OrderType == OrderType.OrderByTimeAscending;
+            bool isAscending = queryModel.OrderType == OrderType.OrderByIdAscending;
 
             // 双向分页逻辑
             if (queryModel.PrevCursorId.HasValue)

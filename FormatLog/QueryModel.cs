@@ -40,7 +40,7 @@
         /// <summary>
         /// 获取或设置每页显示的日志数量。
         /// </summary>
-        public int PageSize { get; set; } = 20;
+        public int PageSize { get; set; } = 50;
 
         /// <summary>
         /// 获取或设置日志创建时间范围的起始时间。

@@ -65,8 +65,8 @@
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Grid.Row="1" Margin="0,0,0,10">
                         <TextBlock Text="排序:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                        <RadioButton x:Name="rbOrderAsc" Content="时间升序" GroupName="OrderType" Width="90" Margin="0,0,10,0"/>
-                        <RadioButton x:Name="rbOrderDesc" Content="时间降序" GroupName="OrderType" Width="90" Margin="0,0,10,0"/>
+                        <RadioButton x:Name="rbOrderAsc" Content="ID 升序" GroupName="OrderType" Width="90" Margin="0,0,10,0"/>
+                        <RadioButton x:Name="rbOrderDesc" Content="ID 降序" GroupName="OrderType" Width="90" Margin="0,0,10,0"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Grid.Row="2" Margin="0,0,0,10">
                         <TextBlock x:Name="txtQueryTime" Text="" FontWeight="Bold"/>

@@ -50,7 +50,7 @@ namespace DemoWPF
         private void BtnQuery_Click(object sender, RoutedEventArgs e)
         {
             _queryModel = new QueryModel();
-            _queryModel.PageSize = 20;
+            _queryModel.PageSize = 50;
             _queryModel.WithArgs(txtArgs.Text);
             _queryModel.WithCaller(txtCaller.Text);
             _queryModel.WithFormat(txtFormat.Text);
@@ -61,11 +61,11 @@ namespace DemoWPF
 
             if (rbOrderAsc.IsChecked == true)
             {
-                _queryModel.OrderBy(OrderType.OrderByTimeAscending);
+                _queryModel.OrderBy(OrderType.OrderByIdAscending);
             }
             if (rbOrderDesc.IsChecked == true)
             {
-                _queryModel.OrderBy(OrderType.OrderByTimeDescending);
+                _queryModel.OrderBy(OrderType.OrderByIdDescending);
             }
 
             QueryLogs(true);
@@ -117,8 +117,8 @@ namespace DemoWPF
             chkNetworkInfo.Checked += (s, e2) => StartWriter(chkNetworkInfo, WriteNetworkInfoAsync);
             chkNetworkInfo.Unchecked += (s, e2) => StopWriter(chkNetworkInfo);
 
-            rbOrderAsc.Checked += (s, e2) => { _queryModel.OrderBy(OrderType.OrderByTimeAscending); QueryLogs(true); };
-            rbOrderDesc.Checked += (s, e2) => { _queryModel.OrderBy(OrderType.OrderByTimeDescending); QueryLogs(true); };
+            rbOrderAsc.Checked += (s, e2) => { _queryModel.OrderBy(OrderType.OrderByIdAscending); QueryLogs(true); };
+            rbOrderDesc.Checked += (s, e2) => { _queryModel.OrderBy(OrderType.OrderByIdDescending); QueryLogs(true); };
             rbOrderAsc.IsChecked = true; // 默认选中升序
 
             btnQuery.Click += BtnQuery_Click;
