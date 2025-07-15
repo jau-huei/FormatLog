@@ -359,6 +359,7 @@ namespace FormatLog
         {
             var date = queryModel.StartTime?.Date ?? queryModel.EndTime?.Date ?? DateTime.Today;
             using var db = new LogDbContext(date.Year, date.Month, date.Day);
+            await db.Database.EnsureCreatedAsync(token);
 
             var logs = db.Logs
                 .Include(l => l.Format)
