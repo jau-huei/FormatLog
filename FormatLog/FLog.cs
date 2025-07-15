@@ -38,19 +38,45 @@ namespace FormatLog
         private static ConcurrentQueue<Log> _logQueueA = new();
 
         /// <summary>
-        /// 日志双缓冲队列B。与队列A交替作为写入或处理队列，实现高效批量日志处理。
-        /// </summary>
-        private static ConcurrentQueue<Log> _logQueueB = new();
-
-        /// <summary>
         /// 当前活跃的日志写入队列。Flush 时会原子切换，保证日志写入与批量处理互不阻塞。
         /// </summary>
         private static volatile ConcurrentQueue<Log> _logQueueActive = _logQueueA;
 
         /// <summary>
+        /// 日志双缓冲队列B。与队列A交替作为写入或处理队列，实现高效批量日志处理。
+        /// </summary>
+        private static ConcurrentQueue<Log> _logQueueB = new();
+
+        /// <summary>
         /// 后台日志写入任务。
         /// </summary>
         private static Task? _workerTask;
+
+        /// <summary>
+        /// 批量插入日志区间统计数据，若区间已存在则自动累加 LogCount。
+        /// </summary>
+        /// <param name="db">数据库上下文。</param>
+        /// <param name="stats">待插入的区间统计列表。</param>
+        /// <param name="token">取消令牌。</param>
+        /// <returns>异步任务。</returns>
+        private static async Task AddOrUpdateLogIntervalStatsAsync(LogDbContext db, List<LogIntervalStat> stats, CancellationToken token = default)
+        {
+            if (stats == null || stats.Count == 0) return;
+
+            var sqlList = new List<string>();
+            foreach (var stat in stats)
+            {
+                var interval = stat.IntervalStart.ToString("yyyy-MM-dd HH:mm:ss");
+                var count = stat.LogCount;
+                sqlList.Add(
+                    $"INSERT INTO LogIntervalStats (IntervalStart, LogCount) VALUES ('{interval}', {count}) " +
+                    "ON CONFLICT(IntervalStart) DO UPDATE SET LogCount = LogIntervalStats.LogCount + excluded.LogCount;"
+                );
+            }
+
+            var sql = string.Join("\n", sqlList);
+            await db.Database.ExecuteSqlRawAsync(sql, token);
+        }
 
         /// <summary>
         /// 批量插入实体集合到数据库，并自动提交事务。
@@ -170,12 +196,24 @@ namespace FormatLog
                         log.Arg9Id = log.Arg9?.Id;
                     }
 
+                    var stats = GetLogIntervalStats(logs);
+
                     var writeStopwatch = Stopwatch.StartNew();
+
+                    // 添加日志
                     await AddRangeAndCommitAsync(
                         db.Set<Log>(),
                         logs,
                         token
                     );
+
+                    // 添加日志区间统计
+                    await AddOrUpdateLogIntervalStatsAsync(
+                        db,
+                        stats,
+                        token
+                    );
+
                     writeStopwatch.Stop();
 
                     totalStopwatch.Stop();
@@ -194,6 +232,35 @@ namespace FormatLog
             {
                 await HandleFlushExceptionAsync(date, logs, ex, token);
             }
+        }
+
+        /// <summary>
+        /// 按 10 分钟为单位统计日志数量。
+        /// 将日志列表按创建时间向下取整到最近的 10 分钟区间分组，
+        /// 返回每个区间的起始时间及对应日志数量统计结果。
+        /// </summary>
+        /// <param name="logs">待统计的日志列表。</param>
+        /// <returns>每 10 分钟区间的日志数量统计列表。</returns>
+        private static List<LogIntervalStat> GetLogIntervalStats(List<Log> logs)
+        {
+            // 按 10 分钟区间分组统计
+            var result = logs
+                .GroupBy(log =>
+                {
+                    var dt = log.CreatedAt;
+                    // 向下取整到最近的 10 分钟
+                    var rounded = new DateTime(dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute / 10 * 10, 0);
+                    return rounded;
+                })
+                .Select(g => new LogIntervalStat
+                {
+                    IntervalStart = g.Key,
+                    LogCount = g.Count()
+                })
+                .OrderBy(stat => stat.IntervalStart)
+                .ToList();
+
+            return result;
         }
 
         /// <summary>

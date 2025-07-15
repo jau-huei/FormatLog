@@ -29,6 +29,11 @@ namespace FormatLog
         public DbSet<Argument> Arguments { get; set; } = null!;
 
         /// <summary>
+        /// 日志区间统计表。
+        /// </summary>
+        public DbSet<LogIntervalStat> LogIntervalStats { get; set; } = null!;
+
+        /// <summary>
         /// 当前数据库文件名。
         /// </summary>
         public string DbName { get; }
