@@ -69,7 +69,9 @@
                         <mah:DateTimePicker x:Name="dpStart" Margin="0,0,5,0"/>
                         <TextBlock Text="-" VerticalAlignment="Center" Margin="0,0,5,0"/>
                         <mah:DateTimePicker x:Name="dpEnd" Margin="0,0,5,0"/>
-                        <Button x:Name="btnQuery" Content="查询" Width="80" Margin="0,0,10,0"/>
+                        <Button x:Name="btnLastHour" Content="最近1小时" Width="90" Margin="0,0,5,0"/>
+                        <Button x:Name="btnClearTime" Content="清空时间" Width="80" Margin="0,0,20,0"/>
+                        <Button x:Name="btnQuery" Content="查询" Width="80" Margin="0,0,5,0"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Grid.Row="2" Margin="0,0,0,10">
                         <TextBlock Text="排序:" VerticalAlignment="Center" Margin="0,0,5,0"/>

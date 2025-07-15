@@ -91,6 +91,29 @@ namespace DemoWPF
         }
 
         /// <summary>
+        /// 最近1小时按钮点击事件。
+        /// </summary>
+        /// <param name="sender">事件源对象。</param>
+        /// <param name="e">事件参数。</param>
+        private void BtnLastHour_Click(object sender, RoutedEventArgs e)
+        {
+            var now = DateTime.Now;
+            dpEnd.SelectedDateTime = now;
+            dpStart.SelectedDateTime = now.AddHours(-1);
+        }
+
+        /// <summary>
+        /// 清空时间按钮点击事件。
+        /// </summary>
+        /// <param name="sender">事件源对象。</param>
+        /// <param name="e">事件参数。</param>
+        private void BtnClearTime_Click(object sender, RoutedEventArgs e)
+        {
+            dpStart.SelectedDateTime = null;
+            dpEnd.SelectedDateTime = null;
+        }
+
+        /// <summary>
         /// 获取当前写入日志等级。
         /// </summary>
         private LogLevel GetSelectedWriteLogLevel()
@@ -141,6 +164,9 @@ namespace DemoWPF
             rbOrderAsc.IsChecked = true; // 默认选中升序
 
             btnQuery.Click += BtnQuery_Click;
+            btnLastHour.Click += BtnLastHour_Click;
+            btnClearTime.Click += BtnClearTime_Click;
+
             btnPrevPage.Click += (s, e2) => { _queryModel.WithPrevCursorTick(_prevCursorTick); QueryLogs(false); };
             btnNextPage.Click += (s, e2) => { _queryModel.WithCursorTick(_nextCursorTick); QueryLogs(false); };
             lvLogs.PreviewMouseWheel += (s, e2) =>
