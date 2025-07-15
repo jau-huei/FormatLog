@@ -18,11 +18,6 @@ namespace FormatLog
         private static readonly object _initLock = new();
 
         /// <summary>
-        /// 后台写入数据库的时间间隔。
-        /// </summary>
-        private static readonly TimeSpan _interval = TimeSpan.FromSeconds(2);
-
-        /// <summary>
         /// 用于取消后台日志写入任务的令牌源。
         /// </summary>
         private static CancellationTokenSource? _cts;
@@ -106,6 +101,41 @@ namespace FormatLog
             cmd.CommandText = sb.ToString();
             await cmd.ExecuteNonQueryAsync(token);
             tran.Commit();
+        }
+
+        /// <summary>
+        /// 动态等待，最大等待 maxWait 毫秒，期间每 interval 毫秒检查队列长度，
+        /// 队列为空时只要 token 未取消就持续等待；
+        /// 队列内容大于 2000 时立即跳出；
+        /// 队列内容为 1 且等待超过 5 秒时立即跳出；
+        /// </summary>
+        /// <param name="token">取消令牌。</param>
+        private static async Task DynamicDelayAsync(CancellationToken token)
+        {
+            const int maxWaitMs = 5000;                 // 最大等待 5 秒
+            const int checkIntervalMs = 100;            // 每 100ms 检查一次
+            const int queueImmediateThreshold = 2000;   // 立即写入阈值
+
+            var start = DateTime.Now;
+            while (!token.IsCancellationRequested)
+            {
+                int waited = (int)(DateTime.Now - start).TotalMilliseconds;
+                int count = _logQueueActive.Count;
+
+                // 队列内容为 1 且等待超过 5 秒时立即跳出
+                if (count >= 1 && waited >= maxWaitMs)
+                    break;
+
+                // 队列内容为 1000 且等待超过 2.5 秒时立即跳出
+                if (count >= queueImmediateThreshold / 2 && waited >= maxWaitMs / 2)
+                    break;
+
+                // 队列内容大于 2000 时立即跳出
+                if (count > queueImmediateThreshold)
+                    break;
+
+                await Task.Delay(checkIntervalMs, token);
+            }
         }
 
         /// <summary>
@@ -367,7 +397,7 @@ namespace FormatLog
             {
                 var date = DateTime.Today;
                 await FlushAsync(date, token);
-                await Task.Delay(_interval, token);
+                await DynamicDelayAsync(token);
             }
         }
 
