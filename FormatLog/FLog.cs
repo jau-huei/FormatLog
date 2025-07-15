@@ -60,13 +60,14 @@ namespace FormatLog
         /// <typeparam name="T">实体类型，必须实现 <see cref="ISqlInsertable"/>。</typeparam>
         /// <param name="dbSet">目标数据库表的 DbSet。</param>
         /// <param name="entities">待插入的实体集合。</param>
-        private static async Task AddRangeAndCommitAsync<T>(DbSet<T> dbSet, List<T> entities) where T : class, ISqlInsertable
+        /// <param name="token">取消操作的令牌。</param>
+        private static async Task AddRangeAndCommitAsync<T>(DbSet<T> dbSet, List<T> entities, CancellationToken token) where T : class, ISqlInsertable
         {
             if (entities == null || entities.Count == 0) return;
 
             var context = dbSet.GetService<ICurrentDbContext>().Context;
             var conn = context.Database.GetDbConnection();
-            await conn.OpenAsync();
+            await conn.OpenAsync(token);
 
             var sb = new System.Text.StringBuilder();
             sb.Append(entities.First().GetInsertSql());
@@ -77,7 +78,7 @@ namespace FormatLog
             using var cmd = conn.CreateCommand();
             cmd.Transaction = tran;
             cmd.CommandText = sb.ToString();
-            await cmd.ExecuteNonQueryAsync();
+            await cmd.ExecuteNonQueryAsync(token);
             tran.Commit();
         }
 
@@ -88,7 +89,7 @@ namespace FormatLog
         /// </summary>
         /// <param name="date">目标数据库日期（用于选择写入的数据库文件）。</param>
         /// <param name="token">取消操作的令牌。</param>
-        private static async Task FlushAsync(DateTime date, CancellationToken token = default)
+        private static async Task FlushAsync(DateTime date, CancellationToken token)
         {
             // 交换队列
             var processingQueue = Interlocked.Exchange(ref _logQueueActive, _logQueueActive == _logQueueA ? _logQueueB : _logQueueA);
@@ -96,7 +97,7 @@ namespace FormatLog
             var logs = new List<Log>();
             try
             {
-                var totalStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                var totalStopwatch = Stopwatch.StartNew();
                 while (processingQueue.TryDequeue(out var log))
                     logs.Add(log);
 
@@ -109,12 +110,13 @@ namespace FormatLog
                     await db.Database.EnsureCreatedAsync(token);
 
                     // 准备副表
-                    var prepareStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                    var prepareStopwatch = Stopwatch.StartNew();
                     var formats = logs.Select(l => l.Format!).Where(f => f != null).Distinct().ToList();
                     formats = await GetOrCreateEntitiesAsync(
                         db, formats,
                         d => d.Formats,
-                        f => (x => x.FormatString == f.FormatString)
+                        f => (x => x.FormatString == f.FormatString),
+                        token
                     );
                     var formatDic = formats.ToDictionary(f => f, f => f);
 
@@ -122,7 +124,8 @@ namespace FormatLog
                     args = await GetOrCreateEntitiesAsync(
                         db, args,
                         d => d.Arguments,
-                        a => (x => x.Value == a.Value)
+                        a => (x => x.Value == a.Value),
+                        token
                     );
                     var argsDic = args.ToDictionary(a => a, a => a);
 
@@ -130,7 +133,8 @@ namespace FormatLog
                     callers = await GetOrCreateEntitiesAsync(
                         db, callers,
                         d => d.CallerInfos,
-                        c => (x => x.MemberName == c.MemberName && x.SourceFilePath == c.SourceFilePath && x.SourceLineNumber == c.SourceLineNumber)
+                        c => (x => x.MemberName == c.MemberName && x.SourceFilePath == c.SourceFilePath && x.SourceLineNumber == c.SourceLineNumber),
+                        token
                     );
                     var callerDic = callers.ToDictionary(c => c, c => c);
                     prepareStopwatch.Stop();
@@ -166,10 +170,11 @@ namespace FormatLog
                         log.Arg9Id = log.Arg9?.Id;
                     }
 
-                    var writeStopwatch = System.Diagnostics.Stopwatch.StartNew();
+                    var writeStopwatch = Stopwatch.StartNew();
                     await AddRangeAndCommitAsync(
                         db.Set<Log>(),
-                        logs
+                        logs,
+                        token
                     );
                     writeStopwatch.Stop();
 
@@ -187,7 +192,7 @@ namespace FormatLog
             }
             catch (Exception ex)
             {
-                await HandleFlushExceptionAsync(date, logs, ex);
+                await HandleFlushExceptionAsync(date, logs, ex, token);
             }
         }
 
@@ -201,8 +206,9 @@ namespace FormatLog
         /// <param name="entities">待确保存在的实体列表</param>
         /// <param name="dbSetSelector">用于获取目标 DbSet 的选择器</param>
         /// <param name="uniqueExpressionFactory">唯一性表达式工厂，根据实体生成用于数据库查找的表达式</param>
+        /// <param name="token">取消操作的令牌。</param>
         /// <returns>数据库中已存在或新建的实体列表（含主键）</returns>
-        private static async Task<List<T>> GetOrCreateEntitiesAsync<T>(LogDbContext db, List<T> entities, Func<LogDbContext, DbSet<T>> dbSetSelector, Func<T, Expression<Func<T, bool>>> uniqueExpressionFactory) where T : class, ISqlInsertable
+        private static async Task<List<T>> GetOrCreateEntitiesAsync<T>(LogDbContext db, List<T> entities, Func<LogDbContext, DbSet<T>> dbSetSelector, Func<T, Expression<Func<T, bool>>> uniqueExpressionFactory, CancellationToken token) where T : class, ISqlInsertable
         {
             if (entities.Count == 0)
                 return new List<T>();
@@ -210,14 +216,14 @@ namespace FormatLog
             var dbSet = dbSetSelector(db);
 
             // 1. 批量插入（已存在的会被忽略）
-            await AddRangeAndCommitAsync(dbSet, entities);
+            await AddRangeAndCommitAsync(dbSet, entities, token);
 
             // 2. 查询所有实体（带主键）
             var result = new List<T>();
             foreach (var entity in entities)
             {
                 var expr = uniqueExpressionFactory(entity);
-                var found = await dbSet.FirstOrDefaultAsync(expr);
+                var found = await dbSet.FirstOrDefaultAsync(expr, token);
                 if (found != null)
                     result.Add(found);
             }
@@ -232,7 +238,8 @@ namespace FormatLog
         /// <param name="date">发生异常的日期。</param>
         /// <param name="logs">本次尝试写入但未成功的日志列表。</param>
         /// <param name="ex">捕获到的异常对象。</param>
-        private static async Task HandleFlushExceptionAsync(DateTime date, List<Log> logs, Exception ex)
+        /// <param name="token">取消操作的令牌。</param>
+        private static async Task HandleFlushExceptionAsync(DateTime date, List<Log> logs, Exception ex, CancellationToken token)
         {
             var fileName = $"Error_{date:yyyy_MM_dd}.{Guid.NewGuid().ToString("N")}.json";
 
@@ -268,7 +275,7 @@ namespace FormatLog
                 if (!string.IsNullOrEmpty(ex.Source)) contents.Add(ex.Source);
                 if (!string.IsNullOrEmpty(ex.StackTrace)) contents.Add(ex.StackTrace);
 
-                await File.AppendAllLinesAsync(txtFilePath, contents);
+                await File.AppendAllLinesAsync(txtFilePath, contents, token);
             }
             catch (Exception)
             {
@@ -283,7 +290,7 @@ namespace FormatLog
         /// </summary>
         private static void OnProcessExit(object? sender, EventArgs e)
         {
-            _ = FlushAsync(DateTime.Today);
+            _ = FlushAsync(DateTime.Today, new CancellationToken());
         }
 
         /// <summary>
@@ -346,8 +353,9 @@ namespace FormatLog
         /// 返回 KeysetPage<Log>，包含当前页数据及上一页/下一页游标。
         /// </summary>
         /// <param name="queryModel">查询参数。</param>
+        /// <param name="token">取消操作的令牌。</param>
         /// <returns>游标分页日志结果。</returns>
-        public static async Task<KeysetPage<Log>> KeysetPaginationAsync(this QueryModel queryModel)
+        public static async Task<KeysetPage<Log>> KeysetPaginationAsync(this QueryModel queryModel, CancellationToken token)
         {
             var date = queryModel.StartTime?.Date ?? queryModel.EndTime?.Date ?? DateTime.Today;
             using var db = new LogDbContext(date.Year, date.Month, date.Day);
@@ -424,7 +432,7 @@ namespace FormatLog
                 {
                     logs = logs.Where(l => l.Id >= queryModel.PrevCursorId.Value).OrderBy(l => l.Id);
                 }
-                items = await logs.Take(pageSize).ToListAsync();
+                items = await logs.Take(pageSize).ToListAsync(token);
                 items.Reverse(); // 反转为正常显示顺序
             }
             else
@@ -438,7 +446,7 @@ namespace FormatLog
                         logs = logs.Where(l => l.Id <= queryModel.NextCursorId.Value);
                 }
                 logs = isAscending ? logs.OrderBy(l => l.Id) : logs.OrderByDescending(l => l.Id);
-                items = await logs.Take(pageSize).ToListAsync();
+                items = await logs.Take(pageSize).ToListAsync(token);
             }
 
             long? nextCursorId = null;
