@@ -21,7 +21,6 @@ namespace FormatLog
     [Index(nameof(Arg7Id))]
     [Index(nameof(Arg8Id))]
     [Index(nameof(Arg9Id))]
-    [Index(nameof(Id), nameof(CreatedTick))]
     public class Log : ISqlInsertable
     {
         /// <summary>

@@ -12,13 +12,13 @@
         public List<T> Items { get; set; } = new();
 
         /// <summary>
-        /// 游标分页：上一页的游标主键 Id（用于支持上一页查询）。
+        /// 游标分页：上一页的游时间戳（用于支持上一页查询）。
         /// </summary>
-        public long? PreCursorId { get; set; }
+        public long? PreCursorTick { get; set; }
 
         /// <summary>
-        /// 游标分页：下一页的游标主键 Id。
+        /// 游标分页：下一页的游时间戳（用于支持下一页查询）。
         /// </summary>
-        public long? NextCursorId { get; set; }
+        public long? NextCursorTick { get; set; }
     }
 }

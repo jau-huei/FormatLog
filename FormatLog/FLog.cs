@@ -422,47 +422,45 @@ namespace FormatLog
             bool isAscending = queryModel.OrderType == OrderType.OrderByIdAscending;
 
             // 双向分页逻辑
-            if (queryModel.PrevCursorId.HasValue)
+            if (queryModel.PrevCursorTick.HasValue)
             {
                 // 上一页，反向排序，游标过滤
                 if (isAscending)
-                {
-                    logs = logs.Where(l => l.Id <= queryModel.PrevCursorId.Value).OrderByDescending(l => l.Id);
-                }
+                    logs = logs.Where(l => l.CreatedTick <= queryModel.PrevCursorTick.Value).OrderByDescending(l => l.CreatedTick);
                 else
-                {
-                    logs = logs.Where(l => l.Id >= queryModel.PrevCursorId.Value).OrderBy(l => l.Id);
-                }
+                    logs = logs.Where(l => l.CreatedTick >= queryModel.PrevCursorTick.Value).OrderBy(l => l.CreatedTick);
                 items = await logs.Take(pageSize).ToListAsync(token);
                 items.Reverse(); // 反转为正常显示顺序
             }
             else
             {
                 // 下一页或首页
-                if (queryModel.NextCursorId.HasValue)
+                if (queryModel.NextCursorTick.HasValue)
                 {
                     if (isAscending)
-                        logs = logs.Where(l => l.Id >= queryModel.NextCursorId.Value);
+                        logs = logs.Where(l => l.CreatedTick >= queryModel.NextCursorTick.Value);
                     else
-                        logs = logs.Where(l => l.Id <= queryModel.NextCursorId.Value);
+                        logs = logs.Where(l => l.CreatedTick <= queryModel.NextCursorTick.Value);
                 }
-                logs = isAscending ? logs.OrderBy(l => l.Id) : logs.OrderByDescending(l => l.Id);
+                logs = isAscending ? logs.OrderBy(l => l.CreatedTick) : logs.OrderByDescending(l => l.CreatedTick);
                 items = await logs.Take(pageSize).ToListAsync(token);
             }
 
-            long? nextCursorId = null;
-            long? prevCursorId = null;
+            var qStr = logs.Take(pageSize).ToQueryString();
+
+            long? nextCursorTick = null;
+            long? prevCursorTick = null;
             if (items.Count > 0)
             {
-                prevCursorId = items.First().Id;
-                nextCursorId = items.Last().Id;
+                prevCursorTick = items.First().CreatedTick;
+                nextCursorTick = items.Last().CreatedTick;
             }
 
             return new KeysetPage<Log>
             {
                 Items = items,
-                PreCursorId = prevCursorId,
-                NextCursorId = nextCursorId,
+                PreCursorTick = prevCursorTick,
+                NextCursorTick = nextCursorTick,
             };
         }
 

@@ -48,14 +48,14 @@
         public DateTime? StartTime { get; set; }
 
         /// <summary>
-        /// 游标分页：下一页的游标主键 ID（用于查询下一页数据时定位起始位置）。
+        /// 游标分页：下一页的游时间戳（用于查询下一页数据时定位起始位置）。
         /// </summary>
-        public long? NextCursorId { get; set; }
+        public long? NextCursorTick { get; set; }
 
         /// <summary>
-        /// 游标分页：上一页的游标主键 ID（用于支持上一页查询）。
+        /// 游标分页：上一页的游时间戳（用于支持上一页查询）。
         /// </summary>
-        public long? PrevCursorId { get; set; }
+        public long? PrevCursorTick { get; set; }
 
         /// <summary>
         /// 设置日志排序方式。
@@ -113,26 +113,26 @@
         }
 
         /// <summary>
-        /// 设置当前页的游标主键 ID（用于下一页/上一页查询）。
+        /// 设置当前页的游时间戳（用于下一页/上一页查询）。
         /// </summary>
-        /// <param name="nextCursorId">当前页的游标主键 ID。</param>
+        /// <param name="nextCursorTick">当前页的游时间戳。</param>
         /// <returns>返回当前查询模型实例。</returns>
-        public QueryModel WithCursorId(long? nextCursorId)
+        public QueryModel WithCursorTick(long? nextCursorTick)
         {
-            NextCursorId = nextCursorId;
-            PrevCursorId = null;
+            NextCursorTick = nextCursorTick;
+            PrevCursorTick = null;
             return this;
         }
 
         /// <summary>
-        /// 设置上一页的游标主键 ID（用于支持上一页查询）。
+        /// 设置上一页的游时间戳（用于支持上一页查询）。
         /// </summary>
-        /// <param name="prevCursorId">上一页的游标主键 ID。</param>
+        /// <param name="prevCursorTick">上一页的游时间戳。</param>
         /// <returns>返回当前查询模型实例。</returns>
-        public QueryModel WithPrevCursorId(long? prevCursorId)
+        public QueryModel WithPrevCursorTick(long? prevCursorTick)
         {
-            PrevCursorId = prevCursorId;
-            NextCursorId = null;
+            PrevCursorTick = prevCursorTick;
+            NextCursorTick = null;
             return this;
         }
 

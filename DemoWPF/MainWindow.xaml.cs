@@ -29,14 +29,14 @@ namespace DemoWPF
         private ObservableCollection<LogViewModel> _logList = new();
 
         /// <summary>
-        /// 下一页日志的游标主键 ID。
+        /// 下一页日志的游标时间戳。
         /// </summary>
-        private long? _nextCursorId = null;
+        private long? _nextCursorTick = null;
 
         /// <summary>
-        /// 上一页日志的游标主键 ID。
+        /// 上一页日志的游标时间戳。
         /// </summary>
-        private long? _prevCursorId = null;
+        private long? _prevCursorTick = null;
 
         /// <summary>
         /// 查询参数模型，包含筛选、排序、分页等参数。
@@ -141,19 +141,19 @@ namespace DemoWPF
             rbOrderAsc.IsChecked = true; // 默认选中升序
 
             btnQuery.Click += BtnQuery_Click;
-            btnPrevPage.Click += (s, e2) => { _queryModel.WithPrevCursorId(_prevCursorId); QueryLogs(false); };
-            btnNextPage.Click += (s, e2) => { _queryModel.WithCursorId(_nextCursorId); QueryLogs(false); };
+            btnPrevPage.Click += (s, e2) => { _queryModel.WithPrevCursorTick(_prevCursorTick); QueryLogs(false); };
+            btnNextPage.Click += (s, e2) => { _queryModel.WithCursorTick(_nextCursorTick); QueryLogs(false); };
             lvLogs.PreviewMouseWheel += (s, e2) =>
             {
-                if (e2.Delta > 0 && _prevCursorId != null)
+                if (e2.Delta > 0 && _prevCursorTick != null)
                 {
-                    _queryModel.WithPrevCursorId(_prevCursorId);
+                    _queryModel.WithPrevCursorTick(_prevCursorTick);
                     QueryLogs(false);
                     e2.Handled = true;
                 }
-                else if (e2.Delta < 0 && _nextCursorId != null)
+                else if (e2.Delta < 0 && _nextCursorTick != null)
                 {
-                    _queryModel.WithCursorId(_nextCursorId);
+                    _queryModel.WithCursorTick(_nextCursorTick);
                     QueryLogs(false);
                     e2.Handled = true;
                 }
@@ -178,8 +178,8 @@ namespace DemoWPF
             {
                 if (resetPage)
                 {
-                    _queryModel.NextCursorId = null;
-                    _queryModel.PrevCursorId = null;
+                    _queryModel.NextCursorTick = null;
+                    _queryModel.PrevCursorTick = null;
                 }
                 UpdateFlushInfo(); // 查询时也刷新写入信息
                 var page = await _queryModel.KeysetPaginationAsync();
@@ -190,10 +190,10 @@ namespace DemoWPF
                 {
                     _logList.Add(new LogViewModel(log));
                 }
-                _nextCursorId = page.NextCursorId;
-                _prevCursorId = page.PreCursorId;
-                btnPrevPage.IsEnabled = _prevCursorId != null;
-                btnNextPage.IsEnabled = _nextCursorId != null;
+                _nextCursorTick = page.NextCursorTick;
+                _prevCursorTick = page.PreCursorTick;
+                btnPrevPage.IsEnabled = _prevCursorTick != null;
+                btnNextPage.IsEnabled = _nextCursorTick != null;
             }
             catch (Exception ex)
             {
