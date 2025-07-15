@@ -6,6 +6,8 @@
 - **FormatLog**：高性能结构化日志组件，支持参数化、格式去重、调用上下文、批量写入、游标分页查询。
 - **DemoWPF**：WPF 演示项目，展示日志写入、查询、富文本渲染等功能。
 
+---
+
 ## FormatLog 组件核心
 
 ### 主要功能
@@ -27,23 +29,20 @@
 
 ### 快速入门
 
-1. **写入日志**
-```csharp
+1. 写入日志 
+```code
 FLog.Add(new Log(LogLevel.Info, "用户登录：{0}@{1}", userName, domain).WithCallerInfo());
 ```
+2. 查询日志（分页、筛选） 
+```code 
+    var query = new QueryModel()
+        .WithLevel(LogLevel.Info)
+        .WithFormat("登录")
+        .OrderBy(OrderType.OrderByIdDescending)
+        .WithCursorId(nextCursorId);
 
-2. **查询日志（分页、筛选）**
-```csharp
-var query = new QueryModel()
-    .WithLevel(LogLevel.Error)
-    .WithFormat("登录")
-    .OrderBy(OrderType.OrderByIdDescending)
-    .WithCursorId(nextCursorId);
-var page = await query.KeysetPaginationAsync();
+    var page = await query.KeysetPaginationAsync();
 ```
-
-3. **WPF 显示日志**
-- 使用 `LogViewModel` 解析分段，支持富文本高亮参数。
 
 ### 设计亮点
 - **格式去重**：日志格式、参数、调用上下文均自动去重，节省存储空间。
@@ -60,8 +59,33 @@ var page = await query.KeysetPaginationAsync();
 - .NET 8
 - Microsoft.EntityFrameworkCore.Sqlite
 
+---
+
+## DemoWPF 演示项目
+
+### 主要功能
+- **日志写入演示**：支持多种类型日志（系统信息、乘法、除法、随机字符串、长/短文本、时间戳、用户/磁盘/网络信息等）批量写入。
+- **日志查询与筛选**：支持按格式、参数、调用者、级别、时间范围等多条件筛选，支持游标分页、双向翻页。
+- **富文本渲染**：日志内容参数高亮显示，支持分段富文本。
+- **性能统计**：实时显示日志写入性能（每百条写入耗时）。
+
+### 主要界面
+- 日志写入页：选择日志类型和等级，批量写入演示。
+- 日志查询页：多条件筛选、分页浏览、富文本高亮。
+
+### 运行方式
+1. 安装 .NET 8 SDK。
+2. 运行 `DemoWPF` 项目（WinExe，WPF）。
+3. 依赖 MahApps.Metro（UI美化）、FormatLog（日志核心）。
+
+### 集成 FormatLog 步骤
+1. 引用 FormatLog 项目或 NuGet 包。
+2. 使用 `FLog.Add(new Log(...).WithCallerInfo())` 写入日志。
+3. 使用 `QueryModel` 进行分页查询。
+4. WPF 可用 `LogViewModel` 进行富文本分段渲染。
+
 ### 目录结构
-```
+```plaintext
 FormatLog/
   ├─ Format.cs
   ├─ Log.cs
@@ -74,6 +98,14 @@ DemoWPF/
   ├─ LogTextSegment.cs
   ├─ MainWindow.xaml(.cs)
 ```
+### 依赖
+- .NET 8
+- Microsoft.EntityFrameworkCore.Sqlite
+- MahApps.Metro（DemoWPF UI）
+
+### 常见问题
+- 日志写入异常会自动持久化到 JSON/TXT 文件，便于排查。
+- 日志数据库按天分库，便于归档和维护。
 
 ---
 
