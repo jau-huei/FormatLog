@@ -84,15 +84,15 @@ namespace FormatLog
         /// 适用于高效写入 Format、Argument、CallerInfo、Log 等实现了 <see cref="ISqlInsertable"/> 的实体。
         /// </summary>
         /// <typeparam name="T">实体类型，必须实现 <see cref="ISqlInsertable"/>。</typeparam>
-        /// <param name="dbSet">目标数据库表的 DbSet。</param>
+        /// <param name="db">日志数据库上下文</param>
+        /// <param name="dbSet">实体集合</param>
         /// <param name="entities">待插入的实体集合。</param>
         /// <param name="token">取消操作的令牌。</param>
-        private static async Task AddRangeAndCommitAsync<T>(DbSet<T> dbSet, List<T> entities, CancellationToken token) where T : class, ISqlInsertable
+        private static async Task AddRangeAndCommitAsync<T>(LogDbContext db, DbSet<T> dbSet, List<T> entities, CancellationToken token) where T : class, ISqlInsertable
         {
             if (entities == null || entities.Count == 0) return;
 
-            var context = dbSet.GetService<ICurrentDbContext>().Context;
-            var conn = context.Database.GetDbConnection();
+            var conn = db.Database.GetDbConnection();
             await conn.OpenAsync(token);
 
             var sb = new System.Text.StringBuilder();
@@ -139,8 +139,7 @@ namespace FormatLog
                     var prepareStopwatch = Stopwatch.StartNew();
                     var formats = logs.Select(l => l.Format!).Where(f => f != null).Distinct().ToList();
                     formats = await GetOrCreateEntitiesAsync(
-                        db, formats,
-                        d => d.Formats,
+                        db, db.Formats, formats,
                         f => (x => x.FormatString == f.FormatString),
                         token
                     );
@@ -148,8 +147,7 @@ namespace FormatLog
 
                     var args = logs.SelectMany(l => l.GetNotNullArguments()).Distinct().ToList();
                     args = await GetOrCreateEntitiesAsync(
-                        db, args,
-                        d => d.Arguments,
+                        db, db.Arguments, args,
                         a => (x => x.Value == a.Value),
                         token
                     );
@@ -157,8 +155,7 @@ namespace FormatLog
 
                     var callers = logs.Select(l => l.CallerInfo!).Where(c => c != null).Distinct().ToList();
                     callers = await GetOrCreateEntitiesAsync(
-                        db, callers,
-                        d => d.CallerInfos,
+                        db, db.CallerInfos, callers,
                         c => (x => x.MemberName == c.MemberName && x.SourceFilePath == c.SourceFilePath && x.SourceLineNumber == c.SourceLineNumber),
                         token
                     );
@@ -202,6 +199,7 @@ namespace FormatLog
 
                     // 添加日志
                     await AddRangeAndCommitAsync(
+                        db,
                         db.Set<Log>(),
                         logs,
                         token
@@ -270,20 +268,18 @@ namespace FormatLog
         /// </summary>
         /// <typeparam name="T">实体类型（如 Format、Argument、CallerInfo 等）</typeparam>
         /// <param name="db">日志数据库上下文</param>
+        /// <param name="dbSet">实体集合</param>
         /// <param name="entities">待确保存在的实体列表</param>
-        /// <param name="dbSetSelector">用于获取目标 DbSet 的选择器</param>
         /// <param name="uniqueExpressionFactory">唯一性表达式工厂，根据实体生成用于数据库查找的表达式</param>
         /// <param name="token">取消操作的令牌。</param>
         /// <returns>数据库中已存在或新建的实体列表（含主键）</returns>
-        private static async Task<List<T>> GetOrCreateEntitiesAsync<T>(LogDbContext db, List<T> entities, Func<LogDbContext, DbSet<T>> dbSetSelector, Func<T, Expression<Func<T, bool>>> uniqueExpressionFactory, CancellationToken token) where T : class, ISqlInsertable
+        private static async Task<List<T>> GetOrCreateEntitiesAsync<T>(LogDbContext db, DbSet<T> dbSet, List<T> entities, Func<T, Expression<Func<T, bool>>> uniqueExpressionFactory, CancellationToken token) where T : class, ISqlInsertable
         {
             if (entities.Count == 0)
                 return new List<T>();
 
-            var dbSet = dbSetSelector(db);
-
             // 1. 批量插入（已存在的会被忽略）
-            await AddRangeAndCommitAsync(dbSet, entities, token);
+            await AddRangeAndCommitAsync(db, dbSet, entities, token);
 
             // 2. 查询所有实体（带主键）
             var result = new List<T>();
