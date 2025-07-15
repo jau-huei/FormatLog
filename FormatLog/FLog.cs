@@ -355,7 +355,7 @@ namespace FormatLog
         /// <param name="queryModel">查询参数。</param>
         /// <param name="token">取消操作的令牌。</param>
         /// <returns>游标分页日志结果。</returns>
-        public static async Task<KeysetPage<Log>> KeysetPaginationAsync(this QueryModel queryModel, CancellationToken token)
+        public static async Task<KeysetPage<Log>> KeysetPaginationAsync(this QueryModel queryModel, CancellationToken token = default)
         {
             var date = queryModel.StartTime?.Date ?? queryModel.EndTime?.Date ?? DateTime.Today;
             using var db = new LogDbContext(date.Year, date.Month, date.Day);
