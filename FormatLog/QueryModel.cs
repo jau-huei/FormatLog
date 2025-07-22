@@ -73,7 +73,7 @@
         /// </summary>
         /// <param name="arguments">参数内容。</param>
         /// <returns>返回当前查询模型实例。</returns>
-        public QueryModel WithArgs(string arguments)
+        public QueryModel WithArgs(string? arguments)
         {
             Argument = arguments;
             return this;
@@ -84,7 +84,7 @@
         /// </summary>
         /// <param name="callerInfo">调用者信息（如成员名、文件路径等）。</param>
         /// <returns>返回当前查询模型实例。</returns>
-        public QueryModel WithCaller(string callerInfo)
+        public QueryModel WithCaller(string? callerInfo)
         {
             CallerInfo = callerInfo;
             return this;
@@ -95,7 +95,7 @@
         /// </summary>
         /// <param name="formatString">格式字符串。</param>
         /// <returns>返回当前查询模型实例。</returns>
-        public QueryModel WithFormat(string formatString)
+        public QueryModel WithFormat(string? formatString)
         {
             FormatString = formatString;
             return this;
@@ -106,7 +106,7 @@
         /// </summary>
         /// <param name="level">日志级别。</param>
         /// <returns>返回当前查询模型实例。</returns>
-        public QueryModel WithLevel(LogLevel level)
+        public QueryModel WithLevel(LogLevel? level)
         {
             Level = level;
             return this;

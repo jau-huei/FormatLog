@@ -427,7 +427,6 @@ namespace FormatLog
             lock (_initLock)
             {
                 if (_initialized) return;
-                Directory.CreateDirectory(LogDbContext.DbDirectory);
 
                 _cts = new CancellationTokenSource();
                 _workerTask = Task.Run(() => WorkerLoop(_cts.Token));
@@ -437,13 +436,62 @@ namespace FormatLog
         }
 
         /// <summary>
+        /// 获取日志数据库目录下所有有效的日志文件日期列表（文件名格式为 yyyy_MM_dd.sqlite）。
+        /// </summary>
+        /// <returns>所有存在的日志文件对应的日期集合。</returns>
+        public static List<DateOnly> GetLogFiles()
+        {
+            var dbs = Directory.GetFiles(LogDbContext.DbDirectory, "*.sqlite").ToList();
+            if (dbs.Count == 0) return new List<DateOnly>();
+
+            return dbs.Select(db =>
+            {
+                var fileName = Path.GetFileNameWithoutExtension(db);
+                if (DateOnly.TryParseExact(fileName, "yyyy_MM_dd", out var date))
+                    return date;
+                return DateOnly.MinValue; // 无效日期
+            }).Where(d => d != DateOnly.MinValue).ToList();
+        }
+
+        /// <summary>
+        /// 判断日志数据库目录下是否存在任何日志文件（即是否有可用日志日期）。
+        /// </summary>
+        /// <returns>如存在日志文件则返回 true，否则返回 false。</returns>
+        public static bool HasLogFile()
+        {
+            return GetLogFiles().Count > 0;
+        }
+
+        /// <summary>
+        /// 判断指定日期的日志文件（yyyy_MM_dd.sqlite）是否存在于日志数据库目录中。
+        /// </summary>
+        /// <param name="date">要检查的日志日期。</param>
+        /// <returns>如该日期日志文件存在则返回 true，否则返回 false。</returns>
+        public static bool HasLogFile(DateOnly date)
+        {
+            var dbName = $"{date:yyyy_MM_dd}.sqlite";
+            return File.Exists(Path.Combine(LogDbContext.DbDirectory, dbName));
+        }
+
+        /// <summary>
+        /// 判断指定日期的日志文件（yyyy_MM_dd.sqlite）是否存在于日志数据库目录中。
+        /// 支持 DateTime 类型日期参数，会自动转换为 DateOnly 并调用对应方法。
+        /// </summary>
+        /// <param name="date">要检查的日志日期（DateTime 类型）。</param>
+        /// <returns>如该日期日志文件存在则返回 true，否则返回 false。</returns>
+        public static bool HasLogFile(DateTime date)
+        {
+            return HasLogFile(DateOnly.FromDateTime(date));
+        }
+
+        /// <summary>
         /// 根据游标分页参数异步获取日志，支持双向分页（上一页/下一页）和升序/降序排序。
         /// 根据 OrderType 决定排序方向，根据 NextCursorId/PrevCursorId 决定游标过滤。
         /// - NextCursorId 有值时，表示下一页，按当前排序方向游标过滤。
         /// - PrevCursorId 有值时，表示上一页，反向排序并取 pageSize 条，最后反转结果。
         /// - 只允许 NextCursorId 或 PrevCursorId 有一个有值。
         /// - 支持多条件筛选（级别、时间、格式、调用者、参数等）。
-        /// 返回 KeysetPage<Log>，包含当前页数据及上一页/下一页游标。
+        /// 返回 KeysetPage&lt;Log&gt;，包含当前页数据及上一页/下一页游标。
         /// </summary>
         /// <param name="queryModel">查询参数。</param>
         /// <param name="token">取消操作的令牌。</param>
@@ -451,6 +499,13 @@ namespace FormatLog
         public static async Task<KeysetPage<Log>> KeysetPaginationAsync(this QueryModel queryModel, CancellationToken token = default)
         {
             var date = queryModel.StartTime?.Date ?? queryModel.EndTime?.Date ?? DateTime.Today;
+            if (!HasLogFile(date)) return new KeysetPage<Log>
+            {
+                Items = new List<Log>(),
+                PreCursorTick = null,
+                NextCursorTick = null
+            };
+
             using var db = new LogDbContext(date.Year, date.Month, date.Day);
             await db.Database.EnsureCreatedAsync(token);
 

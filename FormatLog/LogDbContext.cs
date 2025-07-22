@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System.Xml.Linq;
 
 namespace FormatLog
 {
@@ -41,7 +40,18 @@ namespace FormatLog
         /// <summary>
         /// 日志数据库文件存储目录。
         /// </summary>
-        public static string DbDirectory { get; } = Path.Combine(AppContext.BaseDirectory, "DB", "Log");
+        public static string DbDirectory { get; set; } = CreateDbDirectory();
+
+        /// <summary>
+        /// 创建并返回日志数据库文件存储目录路径（项目根目录下 DB/Log），如目录不存在则自动创建。
+        /// </summary>
+        /// <returns>日志数据库文件存储目录的完整路径。</returns>
+        private static string CreateDbDirectory()
+        {
+            var dir = Path.Combine(Directory.GetCurrentDirectory(), "DB", "Log");
+            Directory.CreateDirectory(dir);
+            return dir;
+        }
 
         /// <summary>
         /// 使用指定日期初始化日志数据库上下文。
