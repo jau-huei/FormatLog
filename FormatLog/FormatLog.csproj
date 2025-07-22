@@ -6,7 +6,7 @@
 		<Nullable>enable</Nullable>
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<PackageId>FormatLog</PackageId>
-		<Version>1.0.3</Version>
+		<Version>1.0.4</Version>
 		<Authors>Wood</Authors>
 		<Description>高性能结构化日志库，支持 EF Core/SQLite 批量写入、双缓冲、异常持久化等。</Description>
 		<PackageTags>logging;EFCore;sqlite;structured-log</PackageTags>
