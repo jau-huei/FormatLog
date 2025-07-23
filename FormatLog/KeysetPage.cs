@@ -20,5 +20,10 @@
         /// 游标分页：下一页的游时间戳（用于支持下一页查询）。
         /// </summary>
         public long? NextCursorTick { get; set; }
+
+        /// <summary>
+        /// 全部数据总数（不受当前查询条件影响）。
+        /// </summary>
+        public long TotalRecords { get; set; }
     }
 }

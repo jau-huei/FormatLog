@@ -609,6 +609,7 @@ namespace FormatLog
                 Items = items,
                 PreCursorTick = prevCursorTick,
                 NextCursorTick = nextCursorTick,
+                TotalRecords = await db.Logs.MaxAsync(log => (long?)log.Id) ?? 0L
             };
         }
 
