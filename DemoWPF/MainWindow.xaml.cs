@@ -168,7 +168,7 @@ namespace DemoWPF
             btnClearTime.Click += BtnClearTime_Click;
 
             btnPrevPage.Click += (s, e2) => { _queryModel.WithPrevCursorTick(_prevCursorTick); QueryLogs(false); };
-            btnNextPage.Click += (s, e2) => { _queryModel.WithCursorTick(_nextCursorTick); QueryLogs(false); };
+            btnNextPage.Click += (s, e2) => { _queryModel.WithNextCursorTick(_nextCursorTick); QueryLogs(false); };
             lvLogs.PreviewMouseWheel += (s, e2) =>
             {
                 if (e2.Delta > 0 && _prevCursorTick != null)
@@ -179,7 +179,7 @@ namespace DemoWPF
                 }
                 else if (e2.Delta < 0 && _nextCursorTick != null)
                 {
-                    _queryModel.WithCursorTick(_nextCursorTick);
+                    _queryModel.WithNextCursorTick(_nextCursorTick);
                     QueryLogs(false);
                     e2.Handled = true;
                 }

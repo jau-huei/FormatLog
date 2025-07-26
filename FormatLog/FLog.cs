@@ -485,17 +485,17 @@ namespace FormatLog
         }
 
         /// <summary>
-        /// 根据游标分页参数异步获取日志，支持双向分页（上一页/下一页）和升序/降序排序。
-        /// 根据 OrderType 决定排序方向，根据 NextCursorId/PrevCursorId 决定游标过滤。
-        /// - NextCursorId 有值时，表示下一页，按当前排序方向游标过滤。
-        /// - PrevCursorId 有值时，表示上一页，反向排序并取 pageSize 条，最后反转结果。
-        /// - 只允许 NextCursorId 或 PrevCursorId 有一个有值。
+        /// 根据 <see cref="QueryModel"/> 的游标分页参数异步获取日志，支持高效双向分页（上一页/下一页）和升序/降序排序。
+        /// - OrderType 决定排序方向（升序/降序）。
+        /// - NextCursorTick 有值时，表示查询下一页。
+        /// - PrevCursorTick 有值时，表示查询上一页。
+        /// - 仅允许 NextCursorTick 或 PrevCursorTick 有一个有值。
         /// - 支持多条件筛选（级别、时间、格式、调用者、参数等）。
-        /// 返回 KeysetPage&lt;Log&gt;，包含当前页数据及上一页/下一页游标。
+        /// 返回 <see cref="KeysetPage{Log}"/>，包含当前页数据及上一页/下一页的游标时间戳。
         /// </summary>
-        /// <param name="queryModel">查询参数。</param>
+        /// <param name="queryModel">查询参数模型，包含筛选、排序、分页游标等参数。</param>
         /// <param name="token">取消操作的令牌。</param>
-        /// <returns>游标分页日志结果。</returns>
+        /// <returns>游标分页日志结果，包含数据集合及上一页/下一页游标。</returns>
         public static async Task<KeysetPage<Log>> KeysetPaginationAsync(this QueryModel queryModel, CancellationToken token = default)
         {
             var date = queryModel.StartTime?.Date ?? queryModel.EndTime?.Date ?? DateTime.Today;

@@ -39,7 +39,7 @@ FLog.Add(new Log(LogLevel.Info, "用户登录：{0}@{1}", userName, domain).With
         .WithLevel(LogLevel.Info)
         .WithFormat("登录")
         .OrderBy(OrderType.OrderByIdDescending)
-        .WithCursorId(nextCursorId);
+        .WithNextCursorTick(nextCursorTick);
 
     var page = await query.KeysetPaginationAsync();
 ```

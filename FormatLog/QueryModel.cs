@@ -113,10 +113,11 @@
         }
 
         /// <summary>
-        /// 设置当前页的游时间戳（用于下一页/上一页查询）。
+        /// 【已废弃】请使用 WithNextCursorTick。设置当前页的游时间戳（用于下一页/上一页查询）。
         /// </summary>
         /// <param name="nextCursorTick">当前页的游时间戳。</param>
         /// <returns>返回当前查询模型实例。</returns>
+        [Obsolete("请使用 WithNextCursorTick 替代 WithCursorTick，此方法已废弃。", true)]
         public QueryModel WithCursorTick(long? nextCursorTick)
         {
             NextCursorTick = nextCursorTick;
@@ -125,9 +126,27 @@
         }
 
         /// <summary>
-        /// 设置上一页的游时间戳（用于支持上一页查询）。
+        /// 设置下一页的游标时间戳，用于分页查询时定位下一页数据的起始位置。
+        /// 调用此方法后，PrevCursorTick 会被清空，仅用于下一页查询场景。
         /// </summary>
-        /// <param name="prevCursorTick">上一页的游时间戳。</param>
+        /// <param name="nextCursorTick">
+        /// 下一页的游标时间戳（通常为当前页最后一条日志的 CreatedTick）。
+        /// </param>
+        /// <returns>返回当前查询模型实例。</returns>
+        public QueryModel WithNextCursorTick(long? nextCursorTick)
+        {
+            NextCursorTick = nextCursorTick;
+            PrevCursorTick = null;
+            return this;
+        }
+
+        /// <summary>
+        /// 设置上一页的游标时间戳，用于分页查询时定位上一页数据的起始位置。
+        /// 调用此方法后，NextCursorTick 会被清空，仅用于上一页查询场景。
+        /// </summary>
+        /// <param name="prevCursorTick">
+        /// 上一页的游标时间戳（通常为当前页第一条日志的 CreatedTick）。
+        /// </param>
         /// <returns>返回当前查询模型实例。</returns>
         public QueryModel WithPrevCursorTick(long? prevCursorTick)
         {
